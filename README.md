@@ -58,11 +58,17 @@
    flutter pub get
    ```
 
-3. **Firebase 설정**
+3. **Firebase 및 AdMob 설정**
 
    - Firebase 콘솔에서 프로젝트 생성
    - `google-services.json` (Android) 및 `GoogleService-Info.plist` (iOS) 추가
-   - AdMob 광고 단위 ID 설정
+   - AdMob 계정 연결 및 광고 단위 생성
+   - 현재 설정된 AdMob ID:
+     - Android 앱 ID: `ca-app-pub-5294358720517664~6429367856`
+     - Android 인터스티셜 ID: `ca-app-pub-5294358720517664/6026027260`
+     - iOS 앱 ID: `ca-app-pub-5294358720517664~9561113448`
+     - iOS 인터스티셜 ID: `ca-app-pub-5294358720517664/3403749268`
+   - 디버그 모드에서는 플랫폼별 테스트 광고 ID 자동 사용
 
 4. **앱 실행**
    ```bash

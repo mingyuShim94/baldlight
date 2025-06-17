@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'services/flashlight_service.dart';
+import 'services/admob_service.dart';
+import 'services/app_lifecycle_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,7 +13,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '대머리 손전등',
+      title: 'BaldLight',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.orange,
@@ -48,6 +50,8 @@ class FlashlightMainPage extends StatefulWidget {
 class _FlashlightMainPageState extends State<FlashlightMainPage>
     with TickerProviderStateMixin {
   final FlashlightService _flashlightService = FlashlightService();
+  final AdMobService _adMobService = AdMobService();
+  final AppLifecycleService _lifecycleService = AppLifecycleService();
 
   bool _isLoading = false;
   bool? _isFlashlightSupported;
@@ -58,12 +62,14 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
     super.initState();
     _initializeAnimations();
     _checkFlashlightSupport();
+    _initializeAds();
   }
 
   @override
   void dispose() {
     _scaleController.dispose();
     _flashlightService.dispose();
+    _adMobService.dispose();
     super.dispose();
   }
 
@@ -86,6 +92,34 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
       setState(() {
         _isFlashlightSupported = false;
       });
+    }
+  }
+
+  /// 광고 초기화 및 표시
+  Future<void> _initializeAds() async {
+    if (!_lifecycleService.shouldShowAd()) {
+      return;
+    }
+
+    try {
+      final hasConsent = await _adMobService.checkConsentStatus();
+      if (!hasConsent) {
+        _lifecycleService.markInitialAdShown();
+        return;
+      }
+
+      await _adMobService.initialize();
+
+      await _adMobService.loadInterstitialAd();
+
+      await Future.delayed(const Duration(milliseconds: 1000));
+
+      final adShown = await _adMobService.showInterstitialAd();
+
+      _lifecycleService.markInitialAdShown();
+    } catch (e) {
+      debugPrint('광고 초기화 실패: $e');
+      _lifecycleService.markInitialAdShown();
     }
   }
 
