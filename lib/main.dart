@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'services/flashlight_service.dart';
 import 'services/admob_service.dart';
 import 'services/app_lifecycle_service.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -29,7 +30,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       themeMode: ThemeMode.system,
-      home: const FlashlightMainPage(),
+      home: const SplashScreen(),
     );
   }
 }
@@ -47,11 +48,8 @@ class FlashlightMainPage extends StatefulWidget {
   State<FlashlightMainPage> createState() => _FlashlightMainPageState();
 }
 
-class _FlashlightMainPageState extends State<FlashlightMainPage>
-    with TickerProviderStateMixin {
+class _FlashlightMainPageState extends State<FlashlightMainPage> with TickerProviderStateMixin {
   final FlashlightService _flashlightService = FlashlightService();
-  final AdMobService _adMobService = AdMobService();
-  final AppLifecycleService _lifecycleService = AppLifecycleService();
 
   bool _isLoading = false;
   bool? _isFlashlightSupported;
@@ -62,14 +60,12 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
     super.initState();
     _initializeAnimations();
     _checkFlashlightSupport();
-    _initializeAds();
   }
 
   @override
   void dispose() {
     _scaleController.dispose();
     _flashlightService.dispose();
-    _adMobService.dispose();
     super.dispose();
   }
 
@@ -92,34 +88,6 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
       setState(() {
         _isFlashlightSupported = false;
       });
-    }
-  }
-
-  /// 광고 초기화 및 표시
-  Future<void> _initializeAds() async {
-    if (!_lifecycleService.shouldShowAd()) {
-      return;
-    }
-
-    try {
-      final hasConsent = await _adMobService.checkConsentStatus();
-      if (!hasConsent) {
-        _lifecycleService.markInitialAdShown();
-        return;
-      }
-
-      await _adMobService.initialize();
-
-      await _adMobService.loadInterstitialAd();
-
-      await Future.delayed(const Duration(milliseconds: 1000));
-
-      final adShown = await _adMobService.showInterstitialAd();
-
-      _lifecycleService.markInitialAdShown();
-    } catch (e) {
-      debugPrint('광고 초기화 실패: $e');
-      _lifecycleService.markInitialAdShown();
     }
   }
 
@@ -201,9 +169,7 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 300),
                   child: Image.asset(
-                    _flashlightService.isFlashlightOn
-                        ? 'assets/images/on.webp'
-                        : 'assets/images/off.webp',
+                    _flashlightService.isFlashlightOn ? 'assets/images/on.webp' : 'assets/images/off.webp',
                     key: ValueKey(_flashlightService.isFlashlightOn),
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
@@ -242,12 +208,10 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
               height: 150,
               child: Center(
                 child: ScaleTransition(
-                  scale: Tween<double>(begin: 1.0, end: 0.95)
-                      .animate(_scaleController),
+                  scale: Tween<double>(begin: 1.0, end: 0.95).animate(_scaleController),
                   child: Semantics(
                     button: true,
-                    label:
-                        _flashlightService.isFlashlightOn ? '손전등 끄기' : '손전등 켜기',
+                    label: _flashlightService.isFlashlightOn ? '손전등 끄기' : '손전등 켜기',
                     hint: '탭하여 손전등을 켜거나 끄세요',
                     child: Container(
                       width: 100,
@@ -264,9 +228,7 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
                         color: Colors.transparent,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(50),
-                          onTap: _isLoading || _isFlashlightSupported != true
-                              ? null
-                              : _toggleFlashlight,
+                          onTap: _isLoading || _isFlashlightSupported != true ? null : _toggleFlashlight,
                           child: _isLoading
                               ? const Center(
                                   child: SizedBox(
@@ -281,9 +243,7 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
                                   ),
                                 )
                               : Icon(
-                                  _flashlightService.isFlashlightOn
-                                      ? Icons.flashlight_on
-                                      : Icons.flashlight_off,
+                                  _flashlightService.isFlashlightOn ? Icons.flashlight_on : Icons.flashlight_off,
                                   size: 40,
                                   color: Colors.white,
                                 ),
