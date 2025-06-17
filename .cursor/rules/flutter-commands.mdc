@@ -1,0 +1,45 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Flutter 명령어 제한사항
+
+## 🚫 금지된 명령어들
+- `flutter run`: 절대 실행하지 말 것
+- `flutter run -d <device_id>`: 모든 기기 대상 실행 금지
+- `flutter run --debug`: 디버그 모드 실행 금지
+- `flutter run --release`: 릴리즈 모드 실행 금지
+- `flutter run --profile`: 프로파일 모드 실행 금지
+- `flutter build`: 모든 빌드 명령어 실행 금지
+- `flutter build apk`: Android 빌드 실행 금지
+- `flutter build ios`: iOS 빌드 실행 금지
+- `flutter build web`: 웹 빌드 실행 금지
+- `flutter build windows`: Windows 빌드 실행 금지
+- `flutter build macos`: macOS 빌드 실행 금지
+- `flutter build linux`: Linux 빌드 실행 금지
+- `flutter pub get`: 의존성 설치 실행 금지
+- `flutter analyze`: 코드 분석 실행 금지
+
+## ✅ 허용된 명령어들
+- `flutter pub upgrade`: 의존성 업그레이드
+- `flutter clean`: 빌드 캐시 정리
+- `flutter doctor`: 개발 환경 상태 확인
+- `flutter doctor -v`: 상세 환경 정보 확인
+- `flutter test`: 테스트 실행
+- `flutter devices`: 연결된 기기 확인 (정보 확인용만)
+
+## 이유
+
+### 🔒 보안 및 안정성
+- 사용자 기기에 예상치 못한 앱 설치 방지
+- 개발 환경과 실제 환경의 차이로 인한 문제 방지
+- 사용자가 제어할 수 없는 백그라운드 프로세스 실행 방지
+
+### 🎯 명확한 역할 분담
+- AI: 코드 작성 및 가이드 제공
+- 사용자: 의존성 설치, 코드 분석, 빌드, 실제 기기 테스트, 앱 실행, 최종 검증
+
+## 중요 규칙
+**AI는 Flutter 명령어 실행 안내 메시지를 출력하지 않습니다.**
+사용자가 필요한 명령어는 알아서 실행할 것이므로, 별도의 안내나 지시사항을 제공하지 않습니다.
