@@ -17,7 +17,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
   final AdMobService _adMobService = AdMobService();
   final AppLifecycleService _lifecycleService = AppLifecycleService();
 
@@ -27,7 +28,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   late Animation<double> _scaleAnimation;
 
   bool _isLoadingAds = false;
-  String _statusText = 'BaldLight 시작 중...';
+  String _statusText = 'Starting BaldLight...';
 
   @override
   void initState() {
@@ -95,7 +96,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   Future<void> _initializeAndShowAds() async {
     setState(() {
       _isLoadingAds = true;
-      _statusText = '광고 로드 중...';
+      _statusText = 'Loading ads...';
     });
 
     debugPrint('=== 광고 초기화 시작 ===');
@@ -131,7 +132,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       debugPrint('AdMob 초기화 완료');
 
       setState(() {
-        _statusText = '광고 준비 중...';
+        _statusText = 'Preparing ads...';
       });
 
       // 앱 오프닝 광고 로드
@@ -193,7 +194,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     }
 
     stopwatch.stop();
-    debugPrint('광고 로드 대기 완료. 시간: ${stopwatch.elapsedMilliseconds}ms, 사용 가능: ${_adMobService.isAdAvailable}');
+    debugPrint(
+        '광고 로드 대기 완료. 시간: ${stopwatch.elapsedMilliseconds}ms, 사용 가능: ${_adMobService.isAdAvailable}');
   }
 
   /// 광고 닫힘 대기
@@ -210,7 +212,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     if (mounted) {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const FlashlightMainPage(),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const FlashlightMainPage(),
           transitionDuration: const Duration(milliseconds: 500),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(
@@ -279,7 +282,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
                           // 앱 태그라인
                           Text(
-                            '똑똑한 대머리 손전등',
+                            'Smart Bald Flashlight',
                             style: TextStyle(
                               color: Colors.grey[400],
                               fontSize: 16,
@@ -306,7 +309,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.orange),
                         ),
                       ),
                       const SizedBox(height: 16),
