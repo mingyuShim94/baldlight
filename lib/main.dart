@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'services/flashlight_service.dart';
 import 'services/admob_service.dart';
-import 'services/app_lifecycle_service.dart';
-import 'screens/splash_screen.dart';
+import 'dart:async';
 
 void main() {
   runApp(const MyApp());
@@ -30,7 +29,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       themeMode: ThemeMode.system,
-      home: const SplashScreen(),
+      home: const FlashlightMainPage(),
     );
   }
 }
@@ -50,22 +49,27 @@ class FlashlightMainPage extends StatefulWidget {
 
 class _FlashlightMainPageState extends State<FlashlightMainPage> with TickerProviderStateMixin {
   final FlashlightService _flashlightService = FlashlightService();
+  final AdMobService _adMobService = AdMobService();
 
   bool _isLoading = false;
   bool? _isFlashlightSupported;
   late AnimationController _scaleController;
+  Timer? _adTimer;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
     _checkFlashlightSupport();
+    _initializeAdMob();
   }
 
   @override
   void dispose() {
     _scaleController.dispose();
     _flashlightService.dispose();
+    _adMobService.dispose();
+    _adTimer?.cancel();
     super.dispose();
   }
 
@@ -75,6 +79,17 @@ class _FlashlightMainPageState extends State<FlashlightMainPage> with TickerProv
       duration: const Duration(milliseconds: 150),
       vsync: this,
     );
+  }
+
+  /// AdMob 서비스 초기화 및 광고 미리 로드
+  Future<void> _initializeAdMob() async {
+    try {
+      await _adMobService.initialize();
+      // 광고 미리 로드
+      await _adMobService.loadInterstitialAd();
+    } catch (e) {
+      print('AdMob 초기화 실패: $e');
+    }
   }
 
   /// 기기의 플래시라이트 지원 여부를 확인합니다
@@ -108,10 +123,17 @@ class _FlashlightMainPageState extends State<FlashlightMainPage> with TickerProv
     });
 
     try {
+      final wasFlashlightOn = _flashlightService.isFlashlightOn;
       await _flashlightService.toggleFlashlight();
+
       setState(() {
         _isLoading = false;
       });
+
+      // 손전등이 켜졌을 때만 5초 후 전면광고 표시
+      if (!wasFlashlightOn && _flashlightService.isFlashlightOn) {
+        _scheduleInterstitialAd();
+      }
     } on FlashlightNotSupportedException catch (e) {
       setState(() {
         _isLoading = false;
@@ -133,6 +155,22 @@ class _FlashlightMainPageState extends State<FlashlightMainPage> with TickerProv
       });
       _showErrorDialog('알 수 없는 오류가 발생했습니다: $e');
     }
+  }
+
+  /// 손전등 켜기 후 5초 뒤에 전면광고 표시 스케줄링
+  void _scheduleInterstitialAd() {
+    // 기존 타이머가 있으면 취소
+    _adTimer?.cancel();
+
+    _adTimer = Timer(const Duration(seconds: 5), () async {
+      // 광고가 준비되어 있으면 표시
+      if (_adMobService.isAdAvailable) {
+        await _adMobService.showInterstitialAd();
+      } else {
+        // 광고가 준비되지 않았으면 로드 시도
+        await _adMobService.loadInterstitialAd();
+      }
+    });
   }
 
   /// 에러 메시지를 다이얼로그로 표시합니다

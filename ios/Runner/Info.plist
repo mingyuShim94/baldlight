@@ -48,7 +48,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs camera access to control the flashlight.</string>
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-5294358720517664~9561113448</string>
+	<string>ca-app-pub-8647279125417942~6654682849</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

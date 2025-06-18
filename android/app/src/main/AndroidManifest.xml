@@ -46,7 +46,7 @@
         <!-- AdMob App ID -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-5294358720517664~6429367856"/>
+            android:value="ca-app-pub-8647279125417942~9280846189"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
