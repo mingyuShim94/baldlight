@@ -33,7 +33,7 @@ class FlashlightService {
       _isFlashlightAvailable = await TorchLight.isTorchAvailable();
       return _isFlashlightAvailable;
     } catch (e) {
-      print('플래시라이트 지원 여부 확인 실패: $e');
+      // 플래시라이트 지원 여부 확인 실패: $e
       _isFlashlightAvailable = false;
       return false;
     }
@@ -62,7 +62,7 @@ class FlashlightService {
 
       await TorchLight.enableTorch();
       _isFlashlightOn = true;
-      print('플래시라이트 켜짐');
+      // 플래시라이트 켜짐
       return true;
     } on EnableTorchNotAvailableException {
       throw FlashlightNotSupportedException('이 기기에서는 플래시라이트를 사용할 수 없습니다.');
@@ -72,7 +72,7 @@ class FlashlightService {
     } on EnableTorchException catch (e) {
       throw FlashlightException('플래시라이트를 켤 수 없습니다: ${e.toString()}');
     } catch (e) {
-      print('플래시라이트 켜기 실패: $e');
+      // 플래시라이트 켜기 실패: $e
       throw FlashlightException('알 수 없는 오류가 발생했습니다: ${e.toString()}');
     }
   }
@@ -94,7 +94,7 @@ class FlashlightService {
 
       await TorchLight.disableTorch();
       _isFlashlightOn = false;
-      print('플래시라이트 꺼짐');
+      // 플래시라이트 꺼짐
       return true;
     } on DisableTorchNotAvailableException {
       throw FlashlightNotSupportedException('이 기기에서는 플래시라이트를 사용할 수 없습니다.');
@@ -103,7 +103,7 @@ class FlashlightService {
     } on DisableTorchException catch (e) {
       throw FlashlightException('플래시라이트를 끌 수 없습니다: ${e.toString()}');
     } catch (e) {
-      print('플래시라이트 끄기 실패: $e');
+      // 플래시라이트 끄기 실패: $e
       _isFlashlightOn = false; // 에러 발생시 상태 초기화
       throw FlashlightException('알 수 없는 오류가 발생했습니다: ${e.toString()}');
     }
@@ -122,7 +122,7 @@ class FlashlightService {
         return await turnOnFlashlight();
       }
     } catch (e) {
-      print('플래시라이트 토글 실패: $e');
+      // 플래시라이트 토글 실패: $e
       rethrow;
     }
   }
@@ -134,7 +134,7 @@ class FlashlightService {
         await turnOffFlashlight();
       }
     } catch (e) {
-      print('FlashlightService dispose 중 에러: $e');
+      // FlashlightService dispose 중 에러: $e
     }
   }
 }

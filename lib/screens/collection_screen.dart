@@ -306,24 +306,32 @@ class _CollectionScreenState extends State<CollectionScreen> {
     try {
       final success = await _baldStyleService.selectStyle(style.id);
       
+      if (!mounted) return;
+      
       if (success) {
         setState(() {
           // UI 업데이트를 위한 setState
         });
 
         // 선택 완료 피드백
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${style.name} has been selected!'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${style.name} has been selected!'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
       } else {
-        _showErrorDialog('Failed to select style.');
+        if (mounted) {
+          _showErrorDialog('Failed to select style.');
+        }
       }
     } catch (e) {
-      _showErrorDialog('An error occurred while selecting style: $e');
+      if (mounted) {
+        _showErrorDialog('An error occurred while selecting style: $e');
+      }
     }
   }
 
