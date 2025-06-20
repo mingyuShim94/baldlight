@@ -133,6 +133,12 @@ class _CollectionScreenState extends State<CollectionScreen> {
           ),
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.of(context).pop(),
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.arrow_back),
+      ),
     );
   }
 

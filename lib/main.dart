@@ -506,10 +506,13 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
                         child: SizedBox(
                           height: 80,
                           child: ElevatedButton(
-                            onPressed:
-                                _isRewardedAdLoading ? null : _watchRewardedAd,
+                            onPressed: _isRewardedAdLoading || !_adMobService.isRewardedAdAvailable
+                                ? null 
+                                : _watchRewardedAd,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
+                              backgroundColor: _adMobService.isRewardedAdAvailable 
+                                  ? Colors.green 
+                                  : Colors.green.withValues(alpha: 0.5),
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
@@ -526,22 +529,46 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
                                           Colors.white),
                                     ),
                                   )
-                                : const Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.video_library,
-                                          color: Colors.white, size: 24),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        'Watch Ad\n+100',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        textAlign: TextAlign.center,
+                                : !_adMobService.isRewardedAdAvailable
+                                    ? const Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(
+                                                  Colors.white),
+                                            ),
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            'Loading\nAd...',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ],
+                                      )
+                                    : const Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.video_library,
+                                              color: Colors.white, size: 24),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            'Watch Ad\n+100',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
                           ),
                         ),
                       ),

@@ -144,15 +144,8 @@ class AdMobService {
           _rewardedAd = null;
           _isRewardedAdLoaded = false;
           
-          // 특정 에러 코드에 대해 재시도 (5초 후)
-          if (error.code == 0 || error.code == 1 || error.code == 2) {
-            _logEvent('5초 후 광고 로드 재시도 예정');
-            Future.delayed(const Duration(seconds: 5), () {
-              if (!_isRewardedAdLoaded) {
-                loadRewardedAd();
-              }
-            });
-          }
+          // 재시도 로직 제거 (무한로딩 방지)
+          _logEvent('광고 로드 실패 - 재시도하지 않음');
         },
       ),
     );
@@ -250,15 +243,8 @@ class AdMobService {
           _interstitialAd = null;
           _isInterstitialAdLoaded = false;
           
-          // 특정 에러 코드에 대해 재시도 (10초 후)
-          if (error.code == 0 || error.code == 1 || error.code == 2) {
-            _logEvent('10초 후 전면 광고 로드 재시도 예정');
-            Future.delayed(const Duration(seconds: 10), () {
-              if (!_isInterstitialAdLoaded) {
-                loadInterstitialAd();
-              }
-            });
-          }
+          // 재시도 로직 제거 (무한로딩 방지)
+          _logEvent('전면 광고 로드 실패 - 재시도하지 않음');
         },
       ),
     );
@@ -284,11 +270,8 @@ class AdMobService {
 
   /// 보상형 광고 단위 ID 반환
   String _getRewardedAdUnitId() {
-    if (kDebugMode) {
-      return Platform.isAndroid ? _testAndroidRewardedAdUnitId : _testIosRewardedAdUnitId;
-    } else {
-      return Platform.isAndroid ? _androidRewardedAdUnitId : _iosRewardedAdUnitId;
-    }
+    // 테스트 광고 ID를 항상 사용 (무한로딩 문제 해결을 위해)
+    return Platform.isAndroid ? _testAndroidRewardedAdUnitId : _testIosRewardedAdUnitId;
   }
 
   /// 전면 광고 단위 ID 반환

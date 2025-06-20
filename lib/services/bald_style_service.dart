@@ -202,7 +202,7 @@ class BaldStyleService {
       ),
       BaldStyle(
         id: 'bald2',
-        name: 'Heihachi',
+        name: 'chonmage',
         offImagePath: 'assets/images/bald_styles/bald2_off.png',
         onImagePath: 'assets/images/bald_styles/bald2_on.png',
         unlockCount: 100,
@@ -213,6 +213,20 @@ class BaldStyleService {
         offImagePath: 'assets/images/bald_styles/bald3_off.png',
         onImagePath: 'assets/images/bald_styles/bald3_on.png',
         unlockCount: 300,
+      ),
+      BaldStyle(
+        id: 'bald4',
+        name: 'Manchu queue',
+        offImagePath: 'assets/images/bald_styles/bald4_off.png',
+        onImagePath: 'assets/images/bald_styles/bald4_on.png',
+        unlockCount: 500,
+      ),
+      BaldStyle(
+        id: 'bald5',
+        name: 'Heihachi',
+        offImagePath: 'assets/images/bald_styles/bald5_off.png',
+        onImagePath: 'assets/images/bald_styles/bald5_on.png',
+        unlockCount: 1000,
       ),
     ];
   }
