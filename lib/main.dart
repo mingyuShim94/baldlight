@@ -18,6 +18,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'BaldLight',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.orange,
@@ -62,6 +63,7 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
   bool? _isFlashlightSupported;
   late AnimationController _scaleController;
   late AnimationController _countAnimationController;
+  late AnimationController _imageAnimationController;
 
   int _currentCount = 0;
   bool _isRewardedAdLoading = false;
@@ -92,6 +94,7 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
   void dispose() {
     _scaleController.dispose();
     _countAnimationController.dispose();
+    _imageAnimationController.dispose();
     _interstitialAdTimer?.cancel();
     _flashlightService.dispose();
     _baldStyleService.dispose();
@@ -108,6 +111,10 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
     );
     _countAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _imageAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
   }
@@ -144,12 +151,12 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
 
     try {
       await _flashlightService.toggleFlashlight();
-      
+
       // 첫 번째로 손전등을 켰을 때 5초 후 전면 광고 표시
       if (_flashlightService.isFlashlightOn && !_hasShownInterstitialAd) {
         _scheduleInterstitialAd();
       }
-      
+
       setState(() {
         _isLoading = false;
       });
@@ -207,6 +214,11 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
         _countAnimationController.reverse();
       });
 
+      // 이미지 변화 애니메이션
+      _imageAnimationController.forward().then((_) {
+        _imageAnimationController.reverse();
+      });
+
       // 새로 해금된 스타일이 있다면 알림 표시
       if (newlyUnlocked.isNotEmpty) {
         _showUnlockDialog(newlyUnlocked);
@@ -245,6 +257,11 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
             _countAnimationController.reverse();
           });
 
+          // 이미지 변화 애니메이션 (광고 보상)
+          _imageAnimationController.forward().then((_) {
+            _imageAnimationController.reverse();
+          });
+
           // 새로 해금된 스타일이 있다면 알림 표시
           if (newlyUnlocked.isNotEmpty) {
             _showUnlockDialog(newlyUnlocked);
@@ -263,32 +280,169 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
     }
   }
 
-  /// 해금 성공 다이얼로그 표시
+  /// 해금 성공 다이얼로그 표시 (강화된 애니메이션)
   void _showUnlockDialog(List<BaldStyle> unlockedStyles) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('🎉 New Style Unlocked!'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Congratulations! New bald style has been unlocked:'),
-            const SizedBox(height: 16),
-            ...unlockedStyles.map((style) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Text(
-                    '• ${style.name}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                )),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.9),
+                Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(context)
+                    .colorScheme
+                    .primary
+                    .withValues(alpha: 0.3),
+                blurRadius: 20,
+                spreadRadius: 5,
+              ),
+            ],
           ),
-        ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 축하 아이콘
+              const Icon(
+                Icons.celebration,
+                size: 64,
+                color: Colors.white,
+              ),
+              const SizedBox(height: 16),
+
+              // 제목
+              const Text(
+                '🎉 NEW STYLE UNLOCKED! 🎉',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+
+              // 서브 타이틀
+              const Text(
+                'Congratulations! You have unlocked:',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+
+              // 해금된 스타일 목록
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  children: unlockedStyles
+                      .map((style) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.stars,
+                                  color: Colors.yellowAccent,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    style.name,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ))
+                      .toList(),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // 버튼
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Theme.of(context).colorScheme.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 5,
+                      ),
+                      child: const Text(
+                        'Awesome!',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const CollectionScreen(),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.2),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: const BorderSide(color: Colors.white, width: 1),
+                        ),
+                      ),
+                      child: const Text(
+                        'View Collection',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -313,13 +467,45 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
   /// 전면 광고 스케줄링 (5초 후 표시)
   void _scheduleInterstitialAd() {
     _interstitialAdTimer?.cancel(); // 기존 타이머 취소
-    
+
     _interstitialAdTimer = Timer(const Duration(seconds: 5), () {
       if (_adMobService.isInterstitialAdAvailable && !_hasShownInterstitialAd) {
         _hasShownInterstitialAd = true;
         _adMobService.showInterstitialAd();
       }
     });
+  }
+
+  /// 다음 해금까지의 진행률 계산
+  double _getProgressToNextUnlock() {
+    if (_countingService.countToNextUnlock <= 0) return 1.0;
+
+    final lockedStyles = _baldStyleService.availableStyles
+        .where((style) => !style.isUnlocked)
+        .toList();
+
+    if (lockedStyles.isEmpty) return 1.0;
+
+    lockedStyles.sort((a, b) => a.unlockCount.compareTo(b.unlockCount));
+    final nextStyle = lockedStyles.first;
+
+    // 이전 단계의 해금 수준 계산
+    final unlockedStyles = _baldStyleService.availableStyles
+        .where((style) => style.isUnlocked && style.unlockCount > 0)
+        .toList();
+
+    int previousUnlockCount = 0;
+    if (unlockedStyles.isNotEmpty) {
+      unlockedStyles.sort((a, b) => b.unlockCount.compareTo(a.unlockCount));
+      previousUnlockCount = unlockedStyles.first.unlockCount;
+    }
+
+    final currentProgress = _currentCount - previousUnlockCount;
+    final totalProgress = nextStyle.unlockCount - previousUnlockCount;
+
+    return totalProgress > 0
+        ? (currentProgress / totalProgress).clamp(0.0, 1.0)
+        : 0.0;
   }
 
   @override
@@ -354,16 +540,16 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
                     ),
                   ),
 
-                  // 카운트 표시
+                  // 카운트 및 진행률 표시
                   ScaleTransition(
-                    scale: Tween<double>(begin: 1.0, end: 1.2)
+                    scale: Tween<double>(begin: 1.0, end: 1.1)
                         .animate(_countAnimationController),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 12),
+                          horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(25),
+                        color: colorScheme.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: colorScheme.primary,
                           width: 2,
@@ -371,21 +557,64 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
                       ),
                       child: Column(
                         children: [
+                          // 카운트 숫자
                           Text(
                             '$_currentCount',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 24,
+                              fontSize: 28,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
-                            'Bald Count',
+                            'Bald Counts',
                             style: TextStyle(
                               color: Colors.white70,
                               fontSize: 12,
                             ),
                           ),
+
+                          // 진행률 바
+                          if (_countingService.countToNextUnlock > 0) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              width: 120,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                              child: FractionallySizedBox(
+                                alignment: Alignment.centerLeft,
+                                widthFactor: _getProgressToNextUnlock(),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.primary,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Next: ${_countingService.nextUnlockStyleName} (${_countingService.countToNextUnlock} left)',
+                              style: const TextStyle(
+                                color: Colors.white60,
+                                fontSize: 10,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 4),
+                            const Text(
+                              '🎉 All Unlocked!',
+                              style: TextStyle(
+                                color: Colors.greenAccent,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -412,45 +641,89 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
               ),
             ),
 
-            // 이미지 영역 (화면의 대부분을 차지)
+            // 이미지 영역 (화면의 대부분을 차지) - 강화된 애니메이션 + 손전등 토글
             Expanded(
               flex: 3,
               child: SizedBox(
                 width: double.infinity,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: Image.asset(
-                    _baldStyleService
-                        .getCurrentImagePath(_flashlightService.isFlashlightOn),
-                    key: ValueKey(
-                        '${_baldStyleService.selectedStyle.id}_${_flashlightService.isFlashlightOn}'),
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.black,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.error_outline,
-                                color: Colors.white,
-                                size: 48,
-                              ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Unable to load image',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 1.0, end: 1.05)
+                      .animate(CurvedAnimation(
+                    parent: _imageAnimationController,
+                    curve: Curves.elasticOut,
+                  )),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 100),
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: child,
                       );
                     },
+                    child: Container(
+                      key: ValueKey(
+                          '${_baldStyleService.selectedStyle.id}_${_flashlightService.isFlashlightOn}'),
+                      decoration: BoxDecoration(
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.2),
+                            blurRadius: 15,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _isLoading || _isFlashlightSupported != true
+                              ? null
+                              : _toggleFlashlight,
+                          child: Semantics(
+                            button: true,
+                            label: _flashlightService.isFlashlightOn
+                                ? 'Turn off flashlight'
+                                : 'Turn on flashlight',
+                            hint: 'Tap the image to turn flashlight on or off',
+                            child: Image.asset(
+                              _baldStyleService.getCurrentImagePath(
+                                  _flashlightService.isFlashlightOn),
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.black,
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(
+                                          Icons.error_outline,
+                                          color: Colors.white,
+                                          size: 48,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'Unable to load image',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -461,35 +734,42 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // 카운트 버튼과 광고 버튼
+                  // 메인 버튼 영역 (카운트, 광고)
                   Row(
                     children: [
-                      // 카운트 증가 버튼 (메인)
+                      // 카운트 증가 버튼 (메인, 75% 너비)
                       Expanded(
-                        flex: 2,
+                        flex: 3,
                         child: SizedBox(
-                          height: 80,
+                          height: 100,
                           child: ElevatedButton(
                             onPressed: _incrementCount,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: colorScheme.primary,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(25),
                               ),
-                              elevation: 8,
+                              elevation: 10,
                             ),
                             child: const Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.add_circle,
-                                    color: Colors.white, size: 32),
-                                SizedBox(height: 4),
+                                Icon(Icons.add_circle_outline,
+                                    color: Colors.white, size: 42),
+                                SizedBox(height: 6),
                                 Text(
-                                  'Count +1',
+                                  'Tap to Count!',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 18,
                                     fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  '+1',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
@@ -500,19 +780,21 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
 
                       const SizedBox(width: 12),
 
-                      // 광고 시청 버튼
+                      // 광고 시청 버튼 (25% 너비)
                       Expanded(
                         flex: 1,
                         child: SizedBox(
-                          height: 80,
+                          height: 100,
                           child: ElevatedButton(
-                            onPressed: _isRewardedAdLoading || !_adMobService.isRewardedAdAvailable
-                                ? null 
+                            onPressed: _isRewardedAdLoading ||
+                                    !_adMobService.isRewardedAdAvailable
+                                ? null
                                 : _watchRewardedAd,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _adMobService.isRewardedAdAvailable 
-                                  ? Colors.green 
-                                  : Colors.green.withValues(alpha: 0.5),
+                              backgroundColor:
+                                  _adMobService.isRewardedAdAvailable
+                                      ? Colors.green
+                                      : Colors.green.withValues(alpha: 0.5),
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
@@ -521,8 +803,8 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
                             ),
                             child: _isRewardedAdLoading
                                 ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
+                                    width: 16,
+                                    height: 16,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       valueColor: AlwaysStoppedAnimation<Color>(
@@ -531,22 +813,24 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
                                   )
                                 : !_adMobService.isRewardedAdAvailable
                                     ? const Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           SizedBox(
-                                            width: 16,
-                                            height: 16,
+                                            width: 12,
+                                            height: 12,
                                             child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              valueColor: AlwaysStoppedAnimation<Color>(
-                                                  Colors.white),
+                                              strokeWidth: 1.5,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                      Colors.white),
                                             ),
                                           ),
                                           SizedBox(height: 4),
                                           Text(
                                             'Loading\nAd...',
                                             style: TextStyle(
-                                              fontSize: 10,
+                                              fontSize: 9,
                                               fontWeight: FontWeight.bold,
                                             ),
                                             textAlign: TextAlign.center,
@@ -554,15 +838,16 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
                                         ],
                                       )
                                     : const Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Icon(Icons.video_library,
-                                              color: Colors.white, size: 24),
+                                              color: Colors.white, size: 20),
                                           SizedBox(height: 4),
                                           Text(
-                                            'Watch Ad\n+100',
+                                            'Ad\n+100',
                                             style: TextStyle(
-                                              fontSize: 12,
+                                              fontSize: 11,
                                               fontWeight: FontWeight.bold,
                                             ),
                                             textAlign: TextAlign.center,
@@ -573,63 +858,6 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
                         ),
                       ),
                     ],
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // 손전등 토글 버튼
-                  ScaleTransition(
-                    scale: Tween<double>(begin: 1.0, end: 0.95)
-                        .animate(_scaleController),
-                    child: Semantics(
-                      button: true,
-                      label: _flashlightService.isFlashlightOn
-                          ? 'Turn off flashlight'
-                          : 'Turn on flashlight',
-                      hint: 'Tap to turn flashlight on or off',
-                      child: Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.grey.withValues(alpha: 0.3),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.8),
-                            width: 2,
-                          ),
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(50),
-                            onTap: _isLoading || _isFlashlightSupported != true
-                                ? null
-                                : _toggleFlashlight,
-                            child: _isLoading
-                                ? const Center(
-                                    child: SizedBox(
-                                      height: 24,
-                                      width: 24,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                          Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : Icon(
-                                    _flashlightService.isFlashlightOn
-                                        ? Icons.flashlight_on
-                                        : Icons.flashlight_off,
-                                    size: 40,
-                                    color: Colors.white,
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ),
                   ),
                 ],
               ),
