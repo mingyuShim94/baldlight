@@ -9,16 +9,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 class BaldStyle {
   final String id;
   final String name;
-  final String offImagePath;
-  final String onImagePath;
+  final String imagePath;
   final int unlockCount;
   bool isUnlocked;
 
   BaldStyle({
     required this.id,
     required this.name,
-    required this.offImagePath,
-    required this.onImagePath,
+    required this.imagePath,
     required this.unlockCount,
     this.isUnlocked = false,
   });
@@ -27,8 +25,7 @@ class BaldStyle {
     return {
       'id': id,
       'name': name,
-      'offImagePath': offImagePath,
-      'onImagePath': onImagePath,
+      'imagePath': imagePath,
       'unlockCount': unlockCount,
       'isUnlocked': isUnlocked,
     };
@@ -38,8 +35,7 @@ class BaldStyle {
     return BaldStyle(
       id: json['id'],
       name: json['name'],
-      offImagePath: json['offImagePath'],
-      onImagePath: json['onImagePath'],
+      imagePath: json['imagePath'],
       unlockCount: json['unlockCount'],
       isUnlocked: json['isUnlocked'] ?? false,
     );
@@ -62,7 +58,7 @@ class BaldStyleService {
   static const String _unlockedStylesKey = 'unlocked_styles';
 
   List<BaldStyle>? _styles;
-  String _selectedStyleId = 'bald1'; // 기본 선택 스타일
+  String _selectedStyleId = 'basic'; // 기본 선택 스타일
 
   /// 사용 가능한 모든 대머리 스타일 목록
   List<BaldStyle> get availableStyles {
@@ -90,11 +86,11 @@ class BaldStyleService {
       final prefs = await SharedPreferences.getInstance();
 
       // 선택된 스타일 ID 로드
-      _selectedStyleId = prefs.getString(_selectedStyleKey) ?? 'bald1';
+      _selectedStyleId = prefs.getString(_selectedStyleKey) ?? 'basic';
 
       // 해금된 스타일 목록 로드
       final unlockedStyleIds =
-          prefs.getStringList(_unlockedStylesKey) ?? ['bald1'];
+          prefs.getStringList(_unlockedStylesKey) ?? ['basic'];
 
       // 해금 상태 업데이트
       for (final style in availableStyles) {
@@ -105,7 +101,7 @@ class BaldStyleService {
     } catch (e) {
       _logEvent('BaldStyleService 초기화 실패: $e', isError: true);
       // 초기화 실패 시 기본값 사용
-      _selectedStyleId = 'bald1';
+      _selectedStyleId = 'basic';
       availableStyles.first.isUnlocked = true;
     }
   }
@@ -172,10 +168,9 @@ class BaldStyleService {
     return style.isUnlocked;
   }
 
-  /// 현재 선택된 스타일의 플래시라이트 상태에 따른 이미지 경로 반환
-  String getCurrentImagePath(bool isFlashlightOn) {
-    final style = selectedStyle;
-    return isFlashlightOn ? style.onImagePath : style.offImagePath;
+  /// 현재 선택된 스타일의 이미지 경로 반환
+  String getCurrentImagePath() {
+    return selectedStyle.imagePath;
   }
 
   /// 해금된 스타일 목록을 SharedPreferences에 저장
@@ -193,39 +188,34 @@ class BaldStyleService {
   List<BaldStyle> _initializeStyles() {
     return [
       BaldStyle(
-        id: 'bald1',
+        id: 'basic',
         name: 'Basic Bald',
-        offImagePath: 'assets/images/bald_styles/bald1_off.png',
-        onImagePath: 'assets/images/bald_styles/bald1_on.png',
+        imagePath: 'assets/images/bald_styles/basic.png',
         unlockCount: 0, // 기본 해금
         isUnlocked: true,
       ),
       BaldStyle(
-        id: 'bald2',
-        name: 'chonmage',
-        offImagePath: 'assets/images/bald_styles/bald2_off.png',
-        onImagePath: 'assets/images/bald_styles/bald2_on.png',
+        id: 'sprout',
+        name: 'Sprout Head',
+        imagePath: 'assets/images/bald_styles/sprout.png',
         unlockCount: 100,
       ),
       BaldStyle(
-        id: 'bald3',
-        name: 'Catholic Monk',
-        offImagePath: 'assets/images/bald_styles/bald3_off.png',
-        onImagePath: 'assets/images/bald_styles/bald3_on.png',
+        id: 'tictactoe',
+        name: 'Tic-Tac-Toe',
+        imagePath: 'assets/images/bald_styles/doodle_tictactoe.png',
         unlockCount: 300,
       ),
       BaldStyle(
-        id: 'bald4',
-        name: 'Manchu queue',
-        offImagePath: 'assets/images/bald_styles/bald4_off.png',
-        onImagePath: 'assets/images/bald_styles/bald4_on.png',
+        id: 'caution',
+        name: 'Caution Sign',
+        imagePath: 'assets/images/bald_styles/sticker_caution.png',
         unlockCount: 500,
       ),
       BaldStyle(
-        id: 'bald5',
-        name: 'Heihachi',
-        offImagePath: 'assets/images/bald_styles/bald5_off.png',
-        onImagePath: 'assets/images/bald_styles/bald5_on.png',
+        id: 'fifty_off',
+        name: '50% Off',
+        imagePath: 'assets/images/bald_styles/sticker_50off.png',
         unlockCount: 1000,
       ),
     ];

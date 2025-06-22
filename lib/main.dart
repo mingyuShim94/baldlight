@@ -1,11 +1,17 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'services/flashlight_service.dart';
+import 'package:flutter/services.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'services/game_service.dart';
+import 'services/sound_service.dart';
+import 'services/fever_time_service.dart';
 import 'services/admob_service.dart';
 import 'services/bald_style_service.dart';
 import 'services/counting_service.dart';
 import 'screens/collection_screen.dart';
 import 'screens/settings_screen.dart';
+import 'widgets/hand_overlay.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,7 +23,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BaldLight',
+      title: 'Bald Clicker',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -34,41 +40,44 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       themeMode: ThemeMode.system,
-      home: const FlashlightMainPage(),
+      home: const BaldClickerMainPage(),
     );
   }
 }
 
-/// 대머리 손전등 앱의 메인 화면
+/// 대머리 클리커 게임의 메인 화면
 ///
 /// 이 페이지는 다음 기능을 제공합니다:
 /// - 전체 화면 대머리 이미지 표시
-/// - 이미지 위에 배치된 손전등 토글 버튼
-/// - 직관적인 손전등 제어
-class FlashlightMainPage extends StatefulWidget {
-  const FlashlightMainPage({super.key});
+/// - 대머리 이미지 탭으로 타격 기능
+/// - 피버타임 및 광고 시스템
+class BaldClickerMainPage extends StatefulWidget {
+  const BaldClickerMainPage({super.key});
 
   @override
-  State<FlashlightMainPage> createState() => _FlashlightMainPageState();
+  State<BaldClickerMainPage> createState() => _BaldClickerMainPageState();
 }
 
-class _FlashlightMainPageState extends State<FlashlightMainPage>
+class _BaldClickerMainPageState extends State<BaldClickerMainPage>
     with TickerProviderStateMixin {
-  final FlashlightService _flashlightService = FlashlightService();
+  final GameService _gameService = GameService();
+  final SoundService _soundService = SoundService();
+  final FeverTimeService _feverTimeService = FeverTimeService();
   final BaldStyleService _baldStyleService = BaldStyleService();
   final CountingService _countingService = CountingService();
   final AdMobService _adMobService = AdMobService();
 
-  bool _isLoading = false;
-  bool? _isFlashlightSupported;
   late AnimationController _scaleController;
   late AnimationController _countAnimationController;
   late AnimationController _imageAnimationController;
 
   int _currentCount = 0;
   bool _isRewardedAdLoading = false;
-  bool _hasShownInterstitialAd = false;
+  final bool _hasShownInterstitialAd = false;
   Timer? _interstitialAdTimer;
+
+  // 손바닥 오버레이 관리
+  final List<Offset> _handOverlayPositions = [];
 
   @override
   void initState() {
@@ -79,10 +88,10 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
 
   /// 서비스들을 초기화합니다
   Future<void> _initializeServices() async {
+    await _soundService.initialize();
     await _baldStyleService.initialize();
     await _countingService.initialize();
     await _adMobService.initialize(); // AdMob 초기화 (자동으로 첫 광고 로드)
-    await _checkFlashlightSupport();
 
     // 현재 카운트 상태 반영
     setState(() {
@@ -96,7 +105,9 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
     _countAnimationController.dispose();
     _imageAnimationController.dispose();
     _interstitialAdTimer?.cancel();
-    _flashlightService.dispose();
+    _gameService.dispose();
+    _soundService.dispose();
+    _feverTimeService.dispose();
     _baldStyleService.dispose();
     _countingService.dispose();
     _adMobService.dispose();
@@ -119,68 +130,143 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
     );
   }
 
-  /// 기기의 플래시라이트 지원 여부를 확인합니다
-  Future<void> _checkFlashlightSupport() async {
-    try {
-      final isSupported = await _flashlightService.isFlashlightAvailable();
-      setState(() {
-        _isFlashlightSupported = isSupported;
-      });
-    } catch (e) {
-      setState(() {
-        _isFlashlightSupported = false;
-      });
+  /// 대머리 타격 처리
+  Future<void> _onBaldImageTapped(Offset globalPosition) async {
+    // 게임 서비스에 탭 등록
+    _gameService.registerTap();
+
+    // 사운드 재생
+    await _soundService.playTapSound();
+
+    // 진동 피드백
+    if (_gameService.isVibrationEnabled) {
+      HapticFeedback.lightImpact();
+    }
+
+    // 손바닥 오버레이 표시 (피버타임 시 2개)
+    if (_feverTimeService.isInFeverTime) {
+      _showMultipleHandOverlays(2);
+    } else {
+      _showHandOverlay(globalPosition);
+    }
+
+    // 카운트 증가 처리
+    await _incrementCount();
+
+    // 이미지 반응 애니메이션
+    _playImageReactionAnimation();
+
+    // 첫 번째 탭 시 5초 후 전면 광고 표시
+    if (_currentCount == 1 && !_hasShownInterstitialAd) {
+      _scheduleInterstitialAd();
     }
   }
 
-  /// 플래시라이트 상태를 토글합니다 (켜기/끄기)
-  Future<void> _toggleFlashlight() async {
-    if (_isFlashlightSupported != true) {
-      _showErrorDialog('Flashlight is not supported on this device.');
-      return;
+  /// 손바닥 오버레이 표시 (대머리 영역 내 랜덤 위치)
+  void _showHandOverlay(Offset globalPosition) {
+    final randomPosition = _getRandomBaldPosition();
+
+    setState(() {
+      _handOverlayPositions.add(randomPosition);
+    });
+
+    // 0.4초 후 오버레이 제거
+    Timer(const Duration(milliseconds: 400), () {
+      setState(() {
+        if (_handOverlayPositions.isNotEmpty) {
+          _handOverlayPositions.removeAt(0);
+        }
+      });
+    });
+  }
+
+  /// 다중 손바닥 오버레이 표시 (피버타임용)
+  void _showMultipleHandOverlays(int count) {
+    final List<Offset> newPositions = [];
+
+    // 여러 개의 랜덤 위치 생성
+    for (int i = 0; i < count; i++) {
+      newPositions.add(_getRandomBaldPosition());
     }
 
     setState(() {
-      _isLoading = true;
+      _handOverlayPositions.addAll(newPositions);
     });
 
-    // 버튼 누름 애니메이션 실행
-    _scaleController.forward().then((_) {
-      _scaleController.reverse();
+    // 0.4초 후 오버레이들 제거
+    Timer(const Duration(milliseconds: 400), () {
+      setState(() {
+        // 추가된 손바닥들만 제거
+        for (int i = 0; i < count && _handOverlayPositions.isNotEmpty; i++) {
+          _handOverlayPositions.removeAt(0);
+        }
+      });
     });
+  }
 
-    try {
-      await _flashlightService.toggleFlashlight();
+  /// 대머리 영역 내 랜덤 위치 계산 (이미지 좌표를 화면 좌표로 변환)
+  Offset _getRandomBaldPosition() {
+    // 원본 이미지 크기 (1024x1536)
+    const double originalImageWidth = 1024.0;
+    const double originalImageHeight = 1536.0;
 
-      // 첫 번째로 손전등을 켰을 때 5초 후 전면 광고 표시
-      if (_flashlightService.isFlashlightOn && !_hasShownInterstitialAd) {
-        _scheduleInterstitialAd();
-      }
+    // 이미지 내 대머리 영역 (주어진 좌표)
+    const double baldImageX = 330.0;
+    const double baldImageY = 100.0;
+    const double baldImageWidth = 350.0;
+    const double baldImageHeight = 400.0;
 
-      setState(() {
-        _isLoading = false;
-      });
-    } on FlashlightNotSupportedException catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      _showErrorDialog(e.message);
-    } on FlashlightInUseException catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      _showErrorDialog(e.message);
-    } on FlashlightException catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      _showErrorDialog(e.message);
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      _showErrorDialog('An unknown error occurred: $e');
+    // 화면에서 이미지 영역 가져오기
+    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) {
+      return const Offset(400, 400); // 기본 위치 반환
     }
+
+    final screenSize = renderBox.size;
+
+    // BoxFit.cover 로직에 따른 실제 이미지 표시 크기 계산
+    final screenAspectRatio = screenSize.width / screenSize.height;
+    final imageAspectRatio = originalImageWidth / originalImageHeight;
+
+    double displayedImageWidth;
+    double displayedImageHeight;
+    double imageOffsetX = 0;
+    double imageOffsetY = 0;
+
+    if (screenAspectRatio > imageAspectRatio) {
+      // 화면이 이미지보다 넓음 - 이미지의 너비가 화면에 맞춰짐
+      displayedImageWidth = screenSize.width;
+      displayedImageHeight = screenSize.width / imageAspectRatio;
+      imageOffsetY = (screenSize.height - displayedImageHeight) / 2;
+    } else {
+      // 화면이 이미지보다 높음 - 이미지의 높이가 화면에 맞춰짐
+      displayedImageHeight = screenSize.height;
+      displayedImageWidth = screenSize.height * imageAspectRatio;
+      imageOffsetX = (screenSize.width - displayedImageWidth) / 2;
+    }
+
+    // 이미지 좌표를 화면 좌표로 변환
+    final scaleX = displayedImageWidth / originalImageWidth;
+    final scaleY = displayedImageHeight / originalImageHeight;
+
+    final random = Random();
+
+    // 대머리 영역 내에서 랜덤 위치 생성 (이미지 좌표 기준)
+    final randomBaldX = baldImageX + random.nextDouble() * baldImageWidth;
+    final randomBaldY = baldImageY + random.nextDouble() * baldImageHeight;
+
+    // 화면 좌표로 변환
+    final screenX = imageOffsetX + (randomBaldX * scaleX);
+    final screenY = imageOffsetY + (randomBaldY * scaleY);
+
+    return Offset(screenX, screenY);
+  }
+
+  /// 이미지 반응 애니메이션
+  void _playImageReactionAnimation() {
+    _imageAnimationController.forward().then((_) {
+      _imageAnimationController.reverse();
+    });
   }
 
   /// 에러 메시지를 다이얼로그로 표시합니다
@@ -200,10 +286,20 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
     );
   }
 
-  /// 카운트 증가 처리
+  /// 카운트 증가 처리 (피버타임 적용)
   Future<void> _incrementCount() async {
     try {
-      final newlyUnlocked = await _countingService.incrementCount();
+      // 기본 카운트 증가량
+      int incrementAmount = 1;
+
+      // 피버타임 적용
+      if (_feverTimeService.isInFeverTime) {
+        incrementAmount =
+            _feverTimeService.applyFeverMultiplier(incrementAmount);
+      }
+
+      // 카운팅 서비스에 실제 증가량 적용
+      final newlyUnlocked = await _countingService.addCount(incrementAmount);
 
       setState(() {
         _currentCount = _countingService.currentCount;
@@ -212,11 +308,6 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
       // 카운트 증가 애니메이션
       _countAnimationController.forward().then((_) {
         _countAnimationController.reverse();
-      });
-
-      // 이미지 변화 애니메이션
-      _imageAnimationController.forward().then((_) {
-        _imageAnimationController.reverse();
       });
 
       // 새로 해금된 스타일이 있다면 알림 표시
@@ -228,9 +319,9 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
     }
   }
 
-  /// 보상형 광고 시청
+  /// 보상형 광고 시청 (피버타임 활성화)
   Future<void> _watchRewardedAd() async {
-    if (_isRewardedAdLoading) return;
+    if (_isRewardedAdLoading || _feverTimeService.isInFeverTime) return;
 
     setState(() {
       _isRewardedAdLoading = true;
@@ -245,30 +336,27 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
 
       _adMobService.showRewardedAd(
         onUserEarnedReward: (ad, reward) async {
-          // 광고 시청 완료 시 카운트 +100
-          final newlyUnlocked = await _countingService.addCountFromAd();
+          // 피버타임 시작
+          _feverTimeService.startFeverTime(
+            onTimeUpdated: (remainingSeconds) {
+              setState(() {}); // UI 업데이트
+            },
+            onFeverEnded: () {
+              setState(() {}); // UI 업데이트
+              _showSuccessDialog('Fever Time ended!\nBack to normal mode.');
+            },
+          );
 
-          setState(() {
-            _currentCount = _countingService.currentCount;
-          });
+          // 피버타임 시작 사운드
+          await _soundService.playFeverSound();
 
           // 성공 애니메이션
           _countAnimationController.forward().then((_) {
             _countAnimationController.reverse();
           });
 
-          // 이미지 변화 애니메이션 (광고 보상)
-          _imageAnimationController.forward().then((_) {
-            _imageAnimationController.reverse();
-          });
-
-          // 새로 해금된 스타일이 있다면 알림 표시
-          if (newlyUnlocked.isNotEmpty) {
-            _showUnlockDialog(newlyUnlocked);
-          }
-
           // 보상 획득 메시지
-          _showSuccessDialog('Ad completed!\nYou received +100 counts!');
+          _showSuccessDialog('Fever Time activated!\n3 minutes of 2x counts!');
         },
       );
     } catch (e) {
@@ -464,16 +552,19 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
     );
   }
 
-  /// 전면 광고 스케줄링 (5초 후 표시)
+  /// 전면 광고 스케줄링 (5초 후 표시) - 임시 비활성화
   void _scheduleInterstitialAd() {
     _interstitialAdTimer?.cancel(); // 기존 타이머 취소
 
-    _interstitialAdTimer = Timer(const Duration(seconds: 5), () {
-      if (_adMobService.isInterstitialAdAvailable && !_hasShownInterstitialAd) {
-        _hasShownInterstitialAd = true;
-        _adMobService.showInterstitialAd();
-      }
-    });
+    // 임시로 전면광고 비활성화 - 필요시 아래 주석 해제
+    return;
+
+    // _interstitialAdTimer = Timer(const Duration(seconds: 5), () {
+    //   if (_adMobService.isInterstitialAdAvailable && !_hasShownInterstitialAd) {
+    //     _hasShownInterstitialAd = true;
+    //     _adMobService.showInterstitialAd();
+    //   }
+    // });
   }
 
   /// 다음 해금까지의 진행률 계산
@@ -641,230 +732,283 @@ class _FlashlightMainPageState extends State<FlashlightMainPage>
               ),
             ),
 
-            // 이미지 영역 (화면의 대부분을 차지) - 강화된 애니메이션 + 손전등 토글
+            // 이미지 영역 (화면의 대부분을 차지) - 대머리 타격 시스템
             Expanded(
               flex: 3,
               child: SizedBox(
                 width: double.infinity,
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 1.0, end: 1.05)
-                      .animate(CurvedAnimation(
-                    parent: _imageAnimationController,
-                    curve: Curves.elasticOut,
-                  )),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 100),
-                    transitionBuilder:
-                        (Widget child, Animation<double> animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      );
-                    },
-                    child: Container(
-                      key: ValueKey(
-                          '${_baldStyleService.selectedStyle.id}_${_flashlightService.isFlashlightOn}'),
-                      decoration: BoxDecoration(
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withValues(alpha: 0.2),
-                            blurRadius: 15,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: _isLoading || _isFlashlightSupported != true
-                              ? null
-                              : _toggleFlashlight,
-                          child: Semantics(
-                            button: true,
-                            label: _flashlightService.isFlashlightOn
-                                ? 'Turn off flashlight'
-                                : 'Turn on flashlight',
-                            hint: 'Tap the image to turn flashlight on or off',
-                            child: Image.asset(
-                              _baldStyleService.getCurrentImagePath(
-                                  _flashlightService.isFlashlightOn),
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.black,
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(
-                                          Icons.error_outline,
-                                          color: Colors.white,
-                                          size: 48,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        const Text(
-                                          'Unable to load image',
-                                          style: TextStyle(
+                child: Stack(
+                  children: [
+                    // 메인 대머리 이미지
+                    ScaleTransition(
+                      scale: Tween<double>(begin: 1.0, end: 1.05)
+                          .animate(CurvedAnimation(
+                        parent: _imageAnimationController,
+                        curve: Curves.elasticOut,
+                      )),
+                      child: Container(
+                        key: ValueKey(_baldStyleService.selectedStyle.id),
+                        width: double.infinity,
+                        height: double.infinity,
+                        decoration: BoxDecoration(
+                          boxShadow: [
+                            BoxShadow(
+                              color: _feverTimeService.isInFeverTime
+                                  ? Colors.orange.withValues(alpha: 0.5)
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withValues(alpha: 0.2),
+                              blurRadius: 15,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTapDown: (details) {
+                              // 전역 위치 전달
+                              _onBaldImageTapped(details.globalPosition);
+                            },
+                            child: Semantics(
+                              button: true,
+                              label: 'Tap to hit the bald',
+                              hint: 'Tap the bald image to increase your count',
+                              child: Image.asset(
+                                _baldStyleService.getCurrentImagePath(),
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: Colors.black,
+                                    child: const Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.error_outline,
                                             color: Colors.white,
-                                            fontSize: 18,
+                                            size: 48,
                                           ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // 하단 컨트롤 영역
-            Container(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  // 메인 버튼 영역 (카운트, 광고)
-                  Row(
-                    children: [
-                      // 카운트 증가 버튼 (메인, 75% 너비)
-                      Expanded(
-                        flex: 3,
-                        child: SizedBox(
-                          height: 100,
-                          child: ElevatedButton(
-                            onPressed: _incrementCount,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colorScheme.primary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(25),
-                              ),
-                              elevation: 10,
-                            ),
-                            child: const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.add_circle_outline,
-                                    color: Colors.white, size: 42),
-                                SizedBox(height: 6),
-                                Text(
-                                  'Tap to Count!',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  '+1',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 12),
-
-                      // 광고 시청 버튼 (25% 너비)
-                      Expanded(
-                        flex: 1,
-                        child: SizedBox(
-                          height: 100,
-                          child: ElevatedButton(
-                            onPressed: _isRewardedAdLoading ||
-                                    !_adMobService.isRewardedAdAvailable
-                                ? null
-                                : _watchRewardedAd,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  _adMobService.isRewardedAdAvailable
-                                      ? Colors.green
-                                      : Colors.green.withValues(alpha: 0.5),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              elevation: 8,
-                            ),
-                            child: _isRewardedAdLoading
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
-                                    ),
-                                  )
-                                : !_adMobService.isRewardedAdAvailable
-                                    ? const Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          SizedBox(
-                                            width: 12,
-                                            height: 12,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 1.5,
-                                              valueColor:
-                                                  AlwaysStoppedAnimation<Color>(
-                                                      Colors.white),
-                                            ),
-                                          ),
-                                          SizedBox(height: 4),
+                                          SizedBox(height: 8),
                                           Text(
-                                            'Loading\nAd...',
+                                            'Unable to load image',
                                             style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ],
-                                      )
-                                    : const Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.video_library,
-                                              color: Colors.white, size: 20),
-                                          SizedBox(height: 4),
-                                          Text(
-                                            'Ad\n+100',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                              fontSize: 18,
                                             ),
                                             textAlign: TextAlign.center,
                                           ),
                                         ],
                                       ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+
+                    // 손바닥 오버레이들
+                    ..._handOverlayPositions.map((position) => HandOverlay(
+                          position: position,
+                          onAnimationComplete: () {
+                            setState(() {
+                              _handOverlayPositions.remove(position);
+                            });
+                          },
+                        )),
+
+                    // 피버타임 표시
+                    if (_feverTimeService.isInFeverTime)
+                      Positioned(
+                        top: 20,
+                        left: 20,
+                        right: 20,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.orange.withValues(alpha: 0.3),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.local_fire_department,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'FEVER TIME x${_feverTimeService.feverMultiplier} - ${_feverTimeService.getFormattedTime()}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // 피버타임 버튼 (우측 하단 오버레이)
+                    Positioned(
+                      bottom: 20,
+                      right: 20,
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: _feverTimeService.isInFeverTime
+                                ? [Colors.grey, Colors.grey.shade700]
+                                : _adMobService.isRewardedAdAvailable
+                                    ? [
+                                        Colors.green.shade400,
+                                        Colors.green.shade600
+                                      ]
+                                    : [
+                                        Colors.green.shade200,
+                                        Colors.green.shade400
+                                      ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: (_feverTimeService.isInFeverTime
+                                      ? Colors.grey
+                                      : Colors.green)
+                                  .withValues(alpha: 0.4),
+                              blurRadius: 8,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(40),
+                            onTap: _isRewardedAdLoading ||
+                                    !_adMobService.isRewardedAdAvailable ||
+                                    _feverTimeService.isInFeverTime
+                                ? null
+                                : _watchRewardedAd,
+                            child: Center(
+                              child: _isRewardedAdLoading
+                                  ? const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
+                                      ),
+                                    )
+                                  : _feverTimeService.isInFeverTime
+                                      ? const Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.local_fire_department,
+                                              color: Colors.white,
+                                              size: 32,
+                                            ),
+                                            Text(
+                                              'Active',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : !_adMobService.isRewardedAdAvailable
+                                          ? const Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                SizedBox(
+                                                  width: 20,
+                                                  height: 20,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor:
+                                                        AlwaysStoppedAnimation<
+                                                                Color>(
+                                                            Colors.white),
+                                                  ),
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  'Loading',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 8,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          : const Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.video_library,
+                                                  color: Colors.white,
+                                                  size: 32,
+                                                ),
+                                                Text(
+                                                  'AD',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
+      // 배너 광고를 화면 맨 아래에 고정
+      bottomNavigationBar: _adMobService.isBannerAdAvailable
+          ? Container(
+              height: 60,
+              alignment: Alignment.center,
+              child: AdWidget(ad: _adMobService.bannerAd!),
+            )
+          : null,
     );
   }
 }

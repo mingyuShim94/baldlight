@@ -133,12 +133,6 @@ class _CollectionScreenState extends State<CollectionScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).pop(),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.arrow_back),
-      ),
     );
   }
 
@@ -182,7 +176,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.asset(
-                          isSelected ? style.onImagePath : style.offImagePath,
+                          style.imagePath,
                           fit: BoxFit.cover,
                           width: double.infinity,
                           height: double.infinity,
@@ -315,20 +309,8 @@ class _CollectionScreenState extends State<CollectionScreen> {
       if (!mounted) return;
       
       if (success) {
-        setState(() {
-          // UI 업데이트를 위한 setState
-        });
-
-        // 선택 완료 피드백
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${style.name} has been selected!'),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
+        // 선택 성공 시 즉시 메인 화면으로 복귀
+        Navigator.of(context).pop();
       } else {
         if (mounted) {
           _showErrorDialog('Failed to select style.');

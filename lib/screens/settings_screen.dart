@@ -72,10 +72,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   _buildInfoTile(
                     icon: Icons.flash_on,
-                    title: 'BaldLight',
+                    title: 'Bald Clicker',
                     subtitle: _appVersion.isNotEmpty 
-                        ? 'Bald Flashlight v$_appVersion' 
-                        : 'Bald Flashlight',
+                        ? 'Bald Clicker Game v$_appVersion' 
+                        : 'Bald Clicker Game',
                     trailing: null,
                   ),
                   _buildInfoTile(
@@ -102,7 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _buildInfoTile(
                     icon: Icons.vibration,
                     title: 'Vibration Feedback',
-                    subtitle: 'Vibrate when pressing count button',
+                    subtitle: 'Vibrate when tapping the bald',
                     trailing: Switch.adaptive(
                       value: _countingService.vibrationEnabled,
                       onChanged: (value) async {
@@ -122,6 +122,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Icons.phone_android,
                       color: Colors.white54,
                     ),
+                  ),
+                  _buildInfoTile(
+                    icon: Icons.restore,
+                    title: 'Reset Game Data',
+                    subtitle: 'Reset all counts and unlock progress',
+                    trailing: const Icon(
+                      Icons.warning,
+                      color: Colors.red,
+                    ),
+                    onTap: _showResetDialog,
                   ),
                 ],
               ),
@@ -189,7 +199,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'BaldLight',
+                      'Bald Clicker',
                       style: TextStyle(
                         color: colorScheme.primary,
                         fontSize: 20,
@@ -208,7 +218,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Fun Bald Flashlight App',
+                      'Fun Bald Clicker Game',
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
@@ -352,8 +362,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _launchFeedback() async {
     try {
       const String email = 'gguggulab@gmail.com'; // 실제 이메일 주소로 변경 필요
-      const String subject = 'BaldLight App Feedback';
-      const String body = 'Hello! Please leave your feedback about the BaldLight app.\n\n';
+      const String subject = 'Bald Clicker App Feedback';
+      const String body = 'Hello! Please leave your feedback about the Bald Clicker app.\n\n';
 
       final Uri emailUri = Uri(
         scheme: 'mailto',
@@ -372,17 +382,210 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// 게임 데이터 초기화 확인 다이얼로그 표시
+  void _showResetDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: Row(
+          children: [
+            Icon(
+              Icons.warning,
+              color: Colors.red,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Reset Game Data',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This action will permanently delete:',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 12),
+            Text(
+              '• All your tap counts',
+              style: TextStyle(color: Colors.white60, fontSize: 14),
+            ),
+            Text(
+              '• All unlocked bald styles',
+              style: TextStyle(color: Colors.white60, fontSize: 14),
+            ),
+            Text(
+              '• Ads watched statistics',
+              style: TextStyle(color: Colors.white60, fontSize: 14),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'This action cannot be undone!',
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _resetGameData();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text(
+              'Reset',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 게임 데이터 초기화 실행
+  Future<void> _resetGameData() async {
+    if (!mounted) return;
+    
+    try {
+      // 로딩 다이얼로그 표시
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.grey[900],
+          content: const Row(
+            children: [
+              CircularProgressIndicator(color: Colors.orange),
+              SizedBox(width: 16),
+              Text(
+                'Resetting game data...',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      // 카운팅 서비스 리셋 실행
+      await _countingService.resetCount();
+
+      // mounted 체크 후 context 사용
+      if (!mounted) return;
+
+      // 로딩 다이얼로그 닫기
+      Navigator.of(context).pop();
+
+      // UI 업데이트
+      setState(() {});
+
+      // 성공 메시지 표시 후 메인 화면으로 복귀
+      _showSuccessDialog('Game data has been reset successfully!', returnToMain: true);
+    } catch (e) {
+      // mounted 체크 후 context 사용
+      if (!mounted) return;
+      
+      // 로딩 다이얼로그 닫기
+      Navigator.of(context).pop();
+      
+      // 에러 메시지 표시
+      _showErrorDialog('Failed to reset game data: $e');
+    }
+  }
+
+  /// 성공 메시지 다이얼로그 표시
+  void _showSuccessDialog(String message, {bool returnToMain = false}) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: Row(
+          children: [
+            Icon(
+              Icons.check_circle,
+              color: Colors.green,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Success',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // 다이얼로그 닫기
+              if (returnToMain) {
+                // 설정 화면을 닫고 메인 화면으로 복귀
+                Navigator.of(context).pop();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(returnToMain ? 'Back to Game' : 'OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// 에러 메시지 다이얼로그 표시
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(message),
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Error',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white70),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+            child: const Text(
+              'OK',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
         ],
       ),

@@ -113,6 +113,38 @@ class CountingService {
     return newlyUnlocked;
   }
 
+  /// 특정 양만큼 카운트 증가 (피버타임 등에 사용)
+  /// [amount] 증가할 카운트 양
+  /// 반환: 새로 해금된 스타일 목록
+  Future<List<BaldStyle>> addCount(int amount) async {
+    if (!_isInitialized) {
+      await initialize();
+    }
+
+    _currentCount += amount;
+    
+    // 진동 피드백 (일반적인 탭 처리)
+    if (_vibrationEnabled && amount == 1) {
+      await _triggerVibration();
+    }
+
+    // 햅틱 피드백
+    await _triggerHapticFeedback();
+
+    // 데이터 저장
+    await _saveCount();
+
+    // 스타일 해금 체크
+    final newlyUnlocked = await _baldStyleService.checkAndUnlockStyles(_currentCount);
+
+    if (newlyUnlocked.isNotEmpty) {
+      _logEvent('카운트 증가로 새 스타일 해금: ${newlyUnlocked.map((s) => s.name).join(', ')}');
+    }
+
+    _logEvent('카운트 +$amount: $_currentCount');
+    return newlyUnlocked;
+  }
+
   /// 광고 시청으로 카운트 증가 (+100)
   /// 반환: 새로 해금된 스타일 목록
   Future<List<BaldStyle>> addCountFromAd() async {
@@ -167,7 +199,7 @@ class CountingService {
     
     // 모든 스타일 잠금 (기본 스타일 제외)
     for (final style in _baldStyleService.availableStyles) {
-      if (style.id != 'bald1') {
+      if (style.id != 'basic') {
         style.isUnlocked = false;
       }
     }

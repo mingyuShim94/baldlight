@@ -32,6 +32,14 @@ class AdMobService {
   static const String _testAndroidInterstitialAdUnitId = 'ca-app-pub-3940256099942544/1033173712';
   static const String _testIosInterstitialAdUnitId = 'ca-app-pub-3940256099942544/4411468910';
 
+  // Production Banner Ad Unit IDs
+  static const String _androidBannerAdUnitId = 'ca-app-pub-8647279125417942/9533865731';
+  static const String _iosBannerAdUnitId = 'ca-app-pub-8647279125417942/1904456022';
+
+  // Test Banner Ad Unit IDs (Google 제공)
+  static const String _testAndroidBannerAdUnitId = 'ca-app-pub-3940256099942544/6300978111';
+  static const String _testIosBannerAdUnitId = 'ca-app-pub-3940256099942544/2934735716';
+
   bool _isInitialized = false;
 
   // Rewarded Ad 관련 변수들
@@ -43,6 +51,10 @@ class AdMobService {
   InterstitialAd? _interstitialAd;
   bool _isInterstitialAdLoaded = false;
   bool _isShowingInterstitialAd = false;
+
+  // Banner Ad 관련 변수들
+  BannerAd? _bannerAd;
+  bool _isBannerAdLoaded = false;
 
   /// AdMob SDK 초기화
   Future<void> initialize() async {
@@ -64,6 +76,7 @@ class AdMobService {
       Future.delayed(const Duration(seconds: 1), () {
         loadRewardedAd();
         loadInterstitialAd();
+        loadBannerAd();
       });
     } catch (e) {
       _logError('AdMob SDK 초기화 실패', e);
@@ -76,6 +89,12 @@ class AdMobService {
 
   /// 전면 광고 사용 가능 여부
   bool get isInterstitialAdAvailable => _interstitialAd != null && _isInterstitialAdLoaded;
+
+  /// 배너 광고 사용 가능 여부
+  bool get isBannerAdAvailable => _bannerAd != null && _isBannerAdLoaded;
+
+  /// 배너 광고 인스턴스 반환
+  BannerAd? get bannerAd => _bannerAd;
 
   /// 보상형 광고 로드
   void loadRewardedAd() {
@@ -268,10 +287,70 @@ class AdMobService {
     _interstitialAd!.show();
   }
 
+  /// 배너 광고 로드
+  void loadBannerAd() {
+    if (!_isInitialized) {
+      _logEvent('AdMob이 초기화되지 않았습니다.');
+      return;
+    }
+
+    if (_isBannerAdLoaded && _bannerAd != null) {
+      _logEvent('배너 광고가 이미 로드되어 있습니다');
+      return;
+    }
+
+    // 기존 광고 정리
+    _disposeBannerAd();
+
+    final adUnitId = _getBannerAdUnitId();
+    _logEvent('배너 광고 로드 시작: $adUnitId');
+    _logEvent('Debug mode: ${kDebugMode ? 'ON (Test ads)' : 'OFF (Production ads)'}');
+
+    _bannerAd = BannerAd(
+      adUnitId: adUnitId,
+      size: AdSize.banner,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          _logEvent('배너 광고 로드 성공');
+          _isBannerAdLoaded = true;
+        },
+        onAdFailedToLoad: (ad, error) {
+          _logError('배너 광고 로드 실패', error);
+          _logEvent('Error details - Code: ${error.code}, Domain: ${error.domain}, Message: ${error.message}');
+          _logEvent('ResponseInfo: ${error.responseInfo?.toString() ?? 'No response info'}');
+          
+          ad.dispose();
+          _bannerAd = null;
+          _isBannerAdLoaded = false;
+          
+          _logEvent('배너 광고 로드 실패 - 재시도하지 않음');
+        },
+        onAdOpened: (ad) {
+          _logEvent('배너 광고 열림');
+        },
+        onAdClosed: (ad) {
+          _logEvent('배너 광고 닫힘');
+        },
+        onAdImpression: (ad) {
+          _logEvent('배너 광고 노출됨');
+        },
+        onAdClicked: (ad) {
+          _logEvent('배너 광고 클릭됨');
+        },
+      ),
+    );
+
+    _bannerAd!.load();
+  }
+
   /// 보상형 광고 단위 ID 반환
   String _getRewardedAdUnitId() {
-    // 테스트 광고 ID를 항상 사용 (무한로딩 문제 해결을 위해)
-    return Platform.isAndroid ? _testAndroidRewardedAdUnitId : _testIosRewardedAdUnitId;
+    if (kDebugMode) {
+      return Platform.isAndroid ? _testAndroidRewardedAdUnitId : _testIosRewardedAdUnitId;
+    } else {
+      return Platform.isAndroid ? _androidRewardedAdUnitId : _iosRewardedAdUnitId;
+    }
   }
 
   /// 전면 광고 단위 ID 반환
@@ -280,6 +359,15 @@ class AdMobService {
       return Platform.isAndroid ? _testAndroidInterstitialAdUnitId : _testIosInterstitialAdUnitId;
     } else {
       return Platform.isAndroid ? _androidInterstitialAdUnitId : _iosInterstitialAdUnitId;
+    }
+  }
+
+  /// 배너 광고 단위 ID 반환
+  String _getBannerAdUnitId() {
+    if (kDebugMode) {
+      return Platform.isAndroid ? _testAndroidBannerAdUnitId : _testIosBannerAdUnitId;
+    } else {
+      return Platform.isAndroid ? _androidBannerAdUnitId : _iosBannerAdUnitId;
     }
   }
 
@@ -299,10 +387,18 @@ class AdMobService {
     _isShowingInterstitialAd = false;
   }
 
+  /// 배너 광고 정리
+  void _disposeBannerAd() {
+    _bannerAd?.dispose();
+    _bannerAd = null;
+    _isBannerAdLoaded = false;
+  }
+
   /// 리소스 정리
   void dispose() {
     _disposeRewardedAd();
     _disposeInterstitialAd();
+    _disposeBannerAd();
     _logEvent('AdMobService 정리 완료');
   }
 
