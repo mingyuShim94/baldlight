@@ -1,0 +1,1 @@
+아이콘생성 명령어: dart run flutter_launcher_icons

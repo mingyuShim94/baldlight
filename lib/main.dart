@@ -867,133 +867,109 @@ class _BaldClickerMainPageState extends State<BaldClickerMainPage>
                       ),
 
                     // 피버타임 버튼 (우측 하단 오버레이)
-                    Positioned(
-                      bottom: 20,
-                      right: 20,
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: _feverTimeService.isInFeverTime
-                                ? [Colors.grey, Colors.grey.shade700]
-                                : _adMobService.isRewardedAdAvailable
-                                    ? [
-                                        Colors.green.shade400,
-                                        Colors.green.shade600
-                                      ]
-                                    : [
-                                        Colors.green.shade200,
-                                        Colors.green.shade400
-                                      ],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: (_feverTimeService.isInFeverTime
-                                      ? Colors.grey
-                                      : Colors.green)
-                                  .withValues(alpha: 0.4),
-                              blurRadius: 8,
-                              spreadRadius: 2,
+                    // 광고가 준비되었거나 피버타임이 활성화된 경우에만 표시
+                    if (_adMobService.isRewardedAdAvailable || _feverTimeService.isInFeverTime)
+                      Positioned(
+                        bottom: 20,
+                        right: 20,
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: _feverTimeService.isInFeverTime
+                                  ? [Colors.grey, Colors.grey.shade700]
+                                  : [
+                                      Colors.orange.shade400,
+                                      Colors.red.shade600
+                                    ],
                             ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(40),
-                            onTap: _isRewardedAdLoading ||
-                                    !_adMobService.isRewardedAdAvailable ||
-                                    _feverTimeService.isInFeverTime
-                                ? null
-                                : _watchRewardedAd,
-                            child: Center(
-                              child: _isRewardedAdLoading
-                                  ? const SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                                Colors.white),
-                                      ),
-                                    )
-                                  : _feverTimeService.isInFeverTime
-                                      ? const Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.local_fire_department,
-                                              color: Colors.white,
-                                              size: 32,
-                                            ),
-                                            Text(
-                                              'Active',
-                                              style: TextStyle(
+                            boxShadow: [
+                              BoxShadow(
+                                color: (_feverTimeService.isInFeverTime
+                                        ? Colors.grey
+                                        : Colors.orange)
+                                    .withValues(alpha: 0.4),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(40),
+                              onTap: _isRewardedAdLoading ||
+                                      _feverTimeService.isInFeverTime
+                                  ? null
+                                  : _watchRewardedAd,
+                              child: Center(
+                                child: _isRewardedAdLoading
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  Colors.white),
+                                        ),
+                                      )
+                                    : _feverTimeService.isInFeverTime
+                                        ? const Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.local_fire_department,
                                                 color: Colors.white,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
+                                                size: 32,
                                               ),
-                                            ),
-                                          ],
-                                        )
-                                      : !_adMobService.isRewardedAdAvailable
-                                          ? const Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                SizedBox(
-                                                  width: 20,
-                                                  height: 20,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    valueColor:
-                                                        AlwaysStoppedAnimation<
-                                                                Color>(
-                                                            Colors.white),
-                                                  ),
-                                                ),
-                                                SizedBox(height: 4),
-                                                Text(
-                                                  'Loading',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 8,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            )
-                                          : const Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Icon(
-                                                  Icons.video_library,
+                                              Text(
+                                                'Active',
+                                                style: TextStyle(
                                                   color: Colors.white,
-                                                  size: 32,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
                                                 ),
-                                                Text(
-                                                  'AD',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
+                                              ),
+                                            ],
+                                          )
+                                        : const Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.local_fire_department,
+                                                color: Colors.white,
+                                                size: 24,
+                                              ),
+                                              Text(
+                                                'x2',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
                                                 ),
-                                              ],
-                                            ),
+                                              ),
+                                              Text(
+                                                'AD',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
