@@ -75,6 +75,7 @@ class _BaldClickerMainPageState extends State<BaldClickerMainPage>
   late AnimationController _scaleController;
   late AnimationController _countAnimationController;
   late AnimationController _imageAnimationController;
+  late AnimationController _tapScaleController;
 
   int _currentCount = 0;
   bool _isRewardedAdLoading = false;
@@ -82,7 +83,8 @@ class _BaldClickerMainPageState extends State<BaldClickerMainPage>
   Timer? _interstitialAdTimer;
 
   // 손바닥 오버레이 관리
-  final List<Offset> _handOverlayPositions = [];
+  final List<Map<String, dynamic>> _handOverlays = [];
+  bool _isLeftHandTurn = true; // 좌우 번갈아가는 상태 추적
 
   @override
   void initState() {
@@ -109,6 +111,7 @@ class _BaldClickerMainPageState extends State<BaldClickerMainPage>
     _scaleController.dispose();
     _countAnimationController.dispose();
     _imageAnimationController.dispose();
+    _tapScaleController.dispose();
     _interstitialAdTimer?.cancel();
     _gameService.dispose();
     _soundService.dispose();
@@ -130,7 +133,11 @@ class _BaldClickerMainPageState extends State<BaldClickerMainPage>
       vsync: this,
     );
     _imageAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _tapScaleController = AnimationController(
+      duration: const Duration(milliseconds: 100),
       vsync: this,
     );
   }
@@ -140,12 +147,12 @@ class _BaldClickerMainPageState extends State<BaldClickerMainPage>
     // 게임 서비스에 탭 등록
     _gameService.registerTap();
 
-    // 사운드 재생
-    await _soundService.playTapSound();
+    // 사운드 재생 (30% 확률로 pain_sound 동시 재생)
+    await _soundService.playTapSoundWithChance();
 
     // 진동 피드백
     if (_gameService.isVibrationEnabled) {
-      HapticFeedback.lightImpact();
+      HapticFeedback.mediumImpact();
     }
 
     // 손바닥 오버레이 표시 (피버타임 시 2개)
@@ -167,60 +174,126 @@ class _BaldClickerMainPageState extends State<BaldClickerMainPage>
     }
   }
 
-  /// 손바닥 오버레이 표시 (대머리 영역 내 랜덤 위치)
+  /// 손바닥 오버레이 표시 (좌우 번갈아가며)
   void _showHandOverlay(Offset globalPosition) {
-    final randomPosition = _getRandomBaldPosition();
+    // 좌우 번갈아가며 위치와 이미지 결정
+    final Offset position;
+    final String imagePath;
+
+    if (_isLeftHandTurn) {
+      position = _getRandomLeftPosition();
+      imagePath = 'assets/images/left_hand.png';
+    } else {
+      position = _getRandomRightPosition();
+      imagePath = 'assets/images/right_hand.png';
+    }
+
+    // 상태 토글
+    _isLeftHandTurn = !_isLeftHandTurn;
+
+    final handOverlay = {
+      'position': position,
+      'imagePath': imagePath,
+      'id': DateTime.now().millisecondsSinceEpoch, // 고유 ID
+    };
 
     setState(() {
-      _handOverlayPositions.add(randomPosition);
+      _handOverlays.add(handOverlay);
     });
 
     // 0.4초 후 오버레이 제거
     Timer(const Duration(milliseconds: 400), () {
       setState(() {
-        if (_handOverlayPositions.isNotEmpty) {
-          _handOverlayPositions.removeAt(0);
-        }
+        _handOverlays
+            .removeWhere((overlay) => overlay['id'] == handOverlay['id']);
       });
     });
   }
 
-  /// 다중 손바닥 오버레이 표시 (피버타임용)
+  /// 다중 손바닥 오버레이 표시 (피버타임용 - 좌우 번갈아가며)
   void _showMultipleHandOverlays(int count) {
-    final List<Offset> newPositions = [];
+    final List<Map<String, dynamic>> newOverlays = [];
 
-    // 여러 개의 랜덤 위치 생성
+    // 여러 개의 손바닥을 좌우 번갈아가며 생성
     for (int i = 0; i < count; i++) {
-      newPositions.add(_getRandomBaldPosition());
+      final Offset position;
+      final String imagePath;
+
+      if (_isLeftHandTurn) {
+        position = _getRandomLeftPosition();
+        imagePath = 'assets/images/left_hand.png';
+      } else {
+        position = _getRandomRightPosition();
+        imagePath = 'assets/images/right_hand.png';
+      }
+
+      // 상태 토글
+      _isLeftHandTurn = !_isLeftHandTurn;
+
+      final handOverlay = {
+        'position': position,
+        'imagePath': imagePath,
+        'id': DateTime.now().millisecondsSinceEpoch + i, // 고유 ID (i 추가로 중복 방지)
+      };
+
+      newOverlays.add(handOverlay);
     }
 
     setState(() {
-      _handOverlayPositions.addAll(newPositions);
+      _handOverlays.addAll(newOverlays);
     });
 
     // 0.4초 후 오버레이들 제거
     Timer(const Duration(milliseconds: 400), () {
       setState(() {
         // 추가된 손바닥들만 제거
-        for (int i = 0; i < count && _handOverlayPositions.isNotEmpty; i++) {
-          _handOverlayPositions.removeAt(0);
+        for (final overlay in newOverlays) {
+          _handOverlays.removeWhere((item) => item['id'] == overlay['id']);
         }
       });
     });
   }
 
-  /// 대머리 영역 내 랜덤 위치 계산 (이미지 좌표를 화면 좌표로 변환)
-  Offset _getRandomBaldPosition() {
-    // 원본 이미지 크기 (1024x1536)
-    const double originalImageWidth = 1024.0;
-    const double originalImageHeight = 1536.0;
+  /// 대머리 영역 좌측 절반에서 랜덤 위치 계산
+  Offset _getRandomLeftPosition() {
+    // 원본 이미지 크기 (408x612)
+    const double originalImageWidth = 408.0;
+    const double originalImageHeight = 612.0;
 
-    // 이미지 내 대머리 영역 (주어진 좌표)
-    const double baldImageX = 330.0;
-    const double baldImageY = 100.0;
-    const double baldImageWidth = 350.0;
-    const double baldImageHeight = 400.0;
+    // 대머리 영역의 좌측 절반 (이미지 좌표 기준)
+    const double baldImageX = 131.0; // X 시작점 (330 * 0.398)
+    const double baldImageY = 80.0; // Y 시작점 증가 (40 → 80으로 40픽셀 하향 이동)
+    const double baldImageWidth = 70.0; // 전체 너비(140)의 절반 (350 * 0.398 / 2)
+    const double baldImageHeight = 119.0; // 높이 조정 (159 - 40 = 119)
 
+    return _calculateScreenPosition(baldImageX, baldImageY, baldImageWidth,
+        baldImageHeight, originalImageWidth, originalImageHeight);
+  }
+
+  /// 대머리 영역 우측 절반에서 랜덤 위치 계산
+  Offset _getRandomRightPosition() {
+    // 원본 이미지 크기 (408x612)
+    const double originalImageWidth = 408.0;
+    const double originalImageHeight = 612.0;
+
+    // 대머리 영역의 우측 절반 (이미지 좌표 기준)
+    const double baldImageX = 201.0; // X 중간점 (131 + 70)
+    const double baldImageY = 80.0; // Y 시작점 증가 (40 → 80으로 40픽셀 하향 이동)
+    const double baldImageWidth = 70.0; // 전체 너비(140)의 절반
+    const double baldImageHeight = 119.0; // 높이 조정 (159 - 40 = 119)
+
+    return _calculateScreenPosition(baldImageX, baldImageY, baldImageWidth,
+        baldImageHeight, originalImageWidth, originalImageHeight);
+  }
+
+  /// 이미지 좌표를 화면 좌표로 변환하는 공통 함수
+  Offset _calculateScreenPosition(
+      double areaX,
+      double areaY,
+      double areaWidth,
+      double areaHeight,
+      double originalImageWidth,
+      double originalImageHeight) {
     // 화면에서 이미지 영역 가져오기
     final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null) {
@@ -256,13 +329,13 @@ class _BaldClickerMainPageState extends State<BaldClickerMainPage>
 
     final random = Random();
 
-    // 대머리 영역 내에서 랜덤 위치 생성 (이미지 좌표 기준)
-    final randomBaldX = baldImageX + random.nextDouble() * baldImageWidth;
-    final randomBaldY = baldImageY + random.nextDouble() * baldImageHeight;
+    // 지정된 영역 내에서 랜덤 위치 생성 (이미지 좌표 기준)
+    final randomX = areaX + random.nextDouble() * areaWidth;
+    final randomY = areaY + random.nextDouble() * areaHeight;
 
     // 화면 좌표로 변환
-    final screenX = imageOffsetX + (randomBaldX * scaleX);
-    final screenY = imageOffsetY + (randomBaldY * scaleY);
+    final screenX = imageOffsetX + (randomX * scaleX);
+    final screenY = imageOffsetY + (randomY * scaleY);
 
     return Offset(screenX, screenY);
   }
@@ -272,6 +345,16 @@ class _BaldClickerMainPageState extends State<BaldClickerMainPage>
     _imageAnimationController.forward().then((_) {
       _imageAnimationController.reverse();
     });
+  }
+
+  /// 터치 다운 처리 (즉시 축소)
+  void _onTapDown() {
+    _tapScaleController.forward();
+  }
+
+  /// 터치 업 처리 (축소 해제)
+  void _onTapUp() {
+    _tapScaleController.reverse();
   }
 
   /// 에러 메시지를 다이얼로그로 표시합니다
@@ -341,6 +424,9 @@ class _BaldClickerMainPageState extends State<BaldClickerMainPage>
 
       _adMobService.showRewardedAd(
         onUserEarnedReward: (ad, reward) async {
+          // 광고 시청 카운트 증가 및 보상 처리
+          final newlyUnlocked = await _countingService.addCountFromAd();
+
           // 피버타임 시작
           _feverTimeService.startFeverTime(
             onTimeUpdated: (remainingSeconds) {
@@ -360,8 +446,18 @@ class _BaldClickerMainPageState extends State<BaldClickerMainPage>
             _countAnimationController.reverse();
           });
 
+          // UI 상태 업데이트
+          setState(() {
+            _currentCount = _countingService.currentCount;
+          });
+
+          // 새로 해금된 스타일이 있다면 알림 표시
+          if (newlyUnlocked.isNotEmpty) {
+            _showUnlockDialog(newlyUnlocked);
+          }
+
           // 보상 획득 메시지
-          _showSuccessDialog('Fever Time activated!\n3 minutes of 2x counts!');
+          _showSuccessDialog('Fever Time activated!\n30 seconds of 2x counts!');
         },
       );
     } catch (e) {
@@ -749,32 +845,42 @@ class _BaldClickerMainPageState extends State<BaldClickerMainPage>
                       scale: Tween<double>(begin: 1.0, end: 1.05)
                           .animate(CurvedAnimation(
                         parent: _imageAnimationController,
-                        curve: Curves.elasticOut,
+                        curve: Curves.easeOutBack,
                       )),
-                      child: Container(
-                        key: ValueKey(_baldStyleService.selectedStyle.id),
-                        width: double.infinity,
-                        height: double.infinity,
-                        decoration: BoxDecoration(
-                          boxShadow: [
-                            BoxShadow(
-                              color: _feverTimeService.isInFeverTime
-                                  ? Colors.orange.withValues(alpha: 0.5)
-                                  : Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withValues(alpha: 0.2),
-                              blurRadius: 15,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
+                      child: ScaleTransition(
+                        scale: Tween<double>(begin: 1.0, end: 0.95)
+                            .animate(CurvedAnimation(
+                          parent: _tapScaleController,
+                          curve: Curves.easeOut,
+                        )),
+                        child: Container(
+                          key: ValueKey(_baldStyleService.selectedStyle.id),
+                          width: double.infinity,
+                          height: double.infinity,
+                          decoration: BoxDecoration(
+                            boxShadow: [
+                              BoxShadow(
+                                color: _feverTimeService.isInFeverTime
+                                    ? Colors.orange.withValues(alpha: 0.5)
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withValues(alpha: 0.2),
+                                blurRadius: 15,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: GestureDetector(
                             onTapDown: (details) {
-                              // 전역 위치 전달
+                              _onTapDown();
                               _onBaldImageTapped(details.globalPosition);
+                            },
+                            onTapUp: (details) {
+                              _onTapUp();
+                            },
+                            onTapCancel: () {
+                              _onTapUp();
                             },
                             child: Semantics(
                               button: true,
@@ -820,11 +926,13 @@ class _BaldClickerMainPageState extends State<BaldClickerMainPage>
                     ),
 
                     // 손바닥 오버레이들
-                    ..._handOverlayPositions.map((position) => HandOverlay(
-                          position: position,
+                    ..._handOverlays.map((overlay) => HandOverlay(
+                          position: overlay['position'] as Offset,
+                          imagePath: overlay['imagePath'] as String,
                           onAnimationComplete: () {
                             setState(() {
-                              _handOverlayPositions.remove(position);
+                              _handOverlays.removeWhere(
+                                  (item) => item['id'] == overlay['id']);
                             });
                           },
                         )),
@@ -873,7 +981,8 @@ class _BaldClickerMainPageState extends State<BaldClickerMainPage>
 
                     // 피버타임 버튼 (우측 하단 오버레이)
                     // 광고가 준비되었거나 피버타임이 활성화된 경우에만 표시
-                    if (_adMobService.isRewardedAdAvailable || _feverTimeService.isInFeverTime)
+                    if (_adMobService.isRewardedAdAvailable ||
+                        _feverTimeService.isInFeverTime)
                       Positioned(
                         bottom: 20,
                         right: 20,

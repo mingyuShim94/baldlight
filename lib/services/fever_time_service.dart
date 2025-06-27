@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 /// 피버타임 관리 서비스
-/// 
+///
 /// 광고 시청 후 피버타임 상태를 관리합니다:
-/// - 피버타임 지속시간 (3분)
+/// - 피버타임 지속시간 (30초)
 /// - 카운트 배수 효과 (x2)
 /// - 피버타임 UI 상태
 class FeverTimeService {
@@ -13,14 +13,14 @@ class FeverTimeService {
   FeverTimeService._internal();
 
   // 피버타임 설정
-  static const int _feverDurationSeconds = 180; // 3분
+  static const int _feverDurationSeconds = 30; // 30초
   static const int _feverMultiplier = 2; // x2 배수
 
   // 상태 변수
   bool _isInFeverTime = false;
   int _remainingSeconds = 0;
   Timer? _feverTimer;
-  
+
   // 콜백 함수
   Function(int)? _onTimeUpdated;
   Function()? _onFeverEnded;
@@ -47,18 +47,19 @@ class FeverTimeService {
 
     _onTimeUpdated = onTimeUpdated;
     _onFeverEnded = onFeverEnded;
-    
+
     _isInFeverTime = true;
     _remainingSeconds = _feverDurationSeconds;
 
     if (kDebugMode) {
-      print('FeverTime started: ${_feverDurationSeconds}s with x$_feverMultiplier multiplier');
+      print(
+          'FeverTime started: ${_feverDurationSeconds}s with x$_feverMultiplier multiplier');
     }
 
     // 1초마다 타이머 업데이트
     _feverTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _remainingSeconds--;
-      
+
       // 콜백 호출
       _onTimeUpdated?.call(_remainingSeconds);
 
