@@ -48,7 +48,7 @@ dependencies:
   shared_preferences: ^2.0.15
 
   # Vibration feedback
-  vibration: ^1.7.5
+  vibration: ^2.0.0
 
   # URL Launcher for external links
   url_launcher: ^6.1.6
