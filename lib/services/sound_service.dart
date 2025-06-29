@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 ///
 /// 게임의 모든 사운드 효과를 관리합니다:
 /// - 타격 효과음
+/// - 아픔 효과음 (hurt1~hurt7 랜덤 재생)
 /// - 해금 효과음
 /// - 배경음악 (추후 추가 예정)
 class SoundService {
@@ -14,16 +15,26 @@ class SoundService {
   SoundService._internal();
 
   late AudioPlayer _audioPlayer;
-  late AudioPlayer _painAudioPlayer; // 추가 오디오 플레이어 (동시 재생용)
+  late AudioPlayer _hurtAudioPlayer; // hurt sound 전용 오디오 플레이어 (동시 재생용)
   bool _isInitialized = false;
   bool _isSoundEnabled = true;
   double _volume = 0.8;
 
   // 사운드 파일 경로
   static const String _tapSoundPath = 'sounds/tap_sound.mp3';
-  static const String _painSoundPath = 'sounds/pain_sound.mp3';
   static const String _unlockSoundPath = 'sounds/unlock_sound.mp3';
   static const String _feverSoundPath = 'sounds/fever_sound.mp3';
+
+  // hurt sound 파일 경로들
+  static const List<String> _hurtSoundPaths = [
+    'sounds/hurt_sounds/hurt1.mp3',
+    'sounds/hurt_sounds/hurt2.mp3',
+    'sounds/hurt_sounds/hurt3.mp3',
+    'sounds/hurt_sounds/hurt4.mp3',
+    'sounds/hurt_sounds/hurt5.mp3',
+    'sounds/hurt_sounds/hurt6.mp3',
+    'sounds/hurt_sounds/hurt7.mp3',
+  ];
 
   // Getters
   bool get isInitialized => _isInitialized;
@@ -34,9 +45,9 @@ class SoundService {
   Future<void> initialize() async {
     try {
       _audioPlayer = AudioPlayer();
-      _painAudioPlayer = AudioPlayer();
+      _hurtAudioPlayer = AudioPlayer();
       await _audioPlayer.setVolume(_volume);
-      await _painAudioPlayer.setVolume(_volume);
+      await _hurtAudioPlayer.setVolume(_volume);
       _isInitialized = true;
 
       if (kDebugMode) {
@@ -64,40 +75,103 @@ class SoundService {
     }
   }
 
-  /// 타격 효과음 + 10% 확률로 아픔 사운드 동시 재생
+  /// 타격 효과음 + 랜덤 hurt sound 동시 재생
   Future<void> playTapSoundWithChance() async {
+    if (kDebugMode) {
+      print(
+          'playTapSoundWithChance called - initialized: $_isInitialized, soundEnabled: $_isSoundEnabled');
+    }
+
     if (!_isInitialized || !_isSoundEnabled) return;
 
     try {
       // 항상 tap_sound 재생
+      if (kDebugMode) {
+        print('Playing tap sound: $_tapSoundPath');
+      }
       await _audioPlayer.play(AssetSource(_tapSoundPath));
 
-      // 10% 확률로 pain_sound 동시 재생
-      final random = Random();
-      if (random.nextInt(100) < 10) {
-        await _painAudioPlayer.play(AssetSource(_painSoundPath));
-        if (kDebugMode) {
-          print('Pain sound triggered! (10% chance)');
-        }
+      // 항상 랜덤 hurt sound 동시 재생
+      if (kDebugMode) {
+        print('About to play random hurt sound...');
       }
+      await _playRandomHurtSound();
     } catch (e) {
       if (kDebugMode) {
         print(
-            'Error playing tap sound with chance (sound file may not exist): $e');
+            'Error playing tap sound with hurt sound (sound file may not exist): $e');
       }
       // 사운드 파일이 없어도 앱이 중단되지 않도록 처리
     }
   }
 
-  /// 아픔 효과음 재생
-  Future<void> playPainSound() async {
+  /// 랜덤 hurt sound 재생
+  Future<void> _playRandomHurtSound() async {
+    if (!_isInitialized || !_isSoundEnabled) {
+      if (kDebugMode) {
+        print(
+            '_playRandomHurtSound skipped - initialized: $_isInitialized, soundEnabled: $_isSoundEnabled');
+      }
+      return;
+    }
+
+    try {
+      final random = Random();
+      final selectedIndex = random.nextInt(_hurtSoundPaths.length);
+      final selectedHurtSound = _hurtSoundPaths[selectedIndex];
+
+      if (kDebugMode) {
+        print(
+            'Selected hurt sound: $selectedHurtSound (index: $selectedIndex)');
+        print('_hurtAudioPlayer state before play: ${_hurtAudioPlayer.state}');
+      }
+
+      await _hurtAudioPlayer.play(AssetSource(selectedHurtSound));
+
+      if (kDebugMode) {
+        print(
+            'Random hurt sound triggered: ${selectedHurtSound.split('/').last}');
+        print('_hurtAudioPlayer state after play: ${_hurtAudioPlayer.state}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error playing random hurt sound: $e');
+        print('Error type: ${e.runtimeType}');
+        if (e is Exception) {
+          print('Exception details: $e');
+        }
+      }
+      // 사운드 파일이 없어도 앱이 중단되지 않도록 처리
+    }
+  }
+
+  /// 특정 hurt sound 재생 (직접 호출용)
+  Future<void> playHurtSound([int? hurtIndex]) async {
     if (!_isInitialized || !_isSoundEnabled) return;
 
     try {
-      await _painAudioPlayer.play(AssetSource(_painSoundPath));
+      String selectedHurtSound;
+
+      if (hurtIndex != null &&
+          hurtIndex >= 0 &&
+          hurtIndex < _hurtSoundPaths.length) {
+        // 특정 인덱스의 hurt sound 재생
+        selectedHurtSound = _hurtSoundPaths[hurtIndex];
+      } else {
+        // 랜덤 hurt sound 재생
+        final random = Random();
+        final selectedIndex = random.nextInt(_hurtSoundPaths.length);
+        selectedHurtSound = _hurtSoundPaths[selectedIndex];
+      }
+
+      await _hurtAudioPlayer.play(AssetSource(selectedHurtSound));
+
+      if (kDebugMode) {
+        print('Hurt sound played: ${selectedHurtSound.split('/').last}');
+      }
     } catch (e) {
       if (kDebugMode) {
-        print('Error playing pain sound (sound file may not exist): $e');
+        print('Error playing hurt sound (sound file may not exist): $e');
       }
       // 사운드 파일이 없어도 앱이 중단되지 않도록 처리
     }
@@ -141,7 +215,7 @@ class SoundService {
     _volume = volume.clamp(0.0, 1.0);
     if (_isInitialized) {
       await _audioPlayer.setVolume(_volume);
-      await _painAudioPlayer.setVolume(_volume);
+      await _hurtAudioPlayer.setVolume(_volume);
     }
   }
 
@@ -149,7 +223,7 @@ class SoundService {
   Future<void> stopAllSounds() async {
     if (_isInitialized) {
       await _audioPlayer.stop();
-      await _painAudioPlayer.stop();
+      await _hurtAudioPlayer.stop();
     }
   }
 
@@ -157,7 +231,7 @@ class SoundService {
   Future<void> dispose() async {
     if (_isInitialized) {
       await _audioPlayer.dispose();
-      await _painAudioPlayer.dispose();
+      await _hurtAudioPlayer.dispose();
       _isInitialized = false;
     }
   }
