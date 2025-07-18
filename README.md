@@ -1,152 +1,153 @@
-# 대머리손전등 (BaldLight) 📱💡
+# BaldLight - 대머리 컬렉터
 
-기본 플래시라이트 기능에 유쾌한 대머리 애니메이션을 결합한 Flutter 기반 모바일 앱입니다.  
-손전등을 켜고 끌 때마다 재미있는 애니메이션을 통해 지루한 플래시 앱 경험을 개선합니다.
+재미있는 애니메이션과 함께 즐기는 한국형 모바일 앱입니다. 손전등 기능과 대머리 캐릭터의 유머러스한 상호작용을 결합한 엔터테인먼트 유틸리티 앱입니다.
 
-## ✨ 주요 기능
+## 🎯 주요 기능
 
-- 🔦 **기본 손전등 기능**: iOS/Android 플래시 하드웨어 제어
-- 🎭 **대머리 애니메이션**: 손전등 ON/OFF 시마다 재미있는 0.5초 애니메이션 재생
-- 💰 **광고 기반 수익화**:
-  - 앱 실행 시 전면 광고 (AdMob Interstitial)
-  - 보상형 광고를 통한 대머리 스타일 커스터마이징
-- ⚙️ **설정 옵션**: 애니메이션 볼륨, 진동 설정, 다크모드 지원
-- 🎨 **스타일 시스템**: 광고 시청으로 해제 가능한 5가지 대머리 스타일
+### 🔦 기본 기능
+- **손전등**: 실제 하드웨어 손전등 제어
+- **대머리 캐릭터**: 다양한 스타일의 대머리 이미지 컬렉션
+- **터치 상호작용**: 캐릭터를 터치하면 재미있는 반응과 사운드
+- **진동 피드백**: 터치 시 햅틱 피드백 제공
 
-## 🎯 타겟 사용자
+### 🎮 게임 요소
+- **컬렉션 시스템**: 다양한 대머리 스타일 수집
+- **카운팅 시스템**: 터치 횟수 추적 및 통계
+- **피버타임**: 특별한 이벤트 모드
+- **사운드 효과**: 다양한 아픈 소리와 효과음
 
-- 15-45세 스마트폰 사용자
-- 캐주얼 엔터테인먼트를 선호하는 사용자
-- 무료 앱을 선호하며 광고에 관대한 사용자
+### 💰 수익화
+- **Google AdMob**: 광고 기반 수익 모델
+- **앱 오픈 광고**: 앱 실행 시 광고 표시
+- **보상형 광고**: 컬렉션 아이템 획득을 위한 광고
 
-## 🛠 기술 스택
+## 🏗️ 기술 스택
 
-- **Framework**: Flutter + Dart
-- **상태 관리**: BLoC Pattern
-- **애니메이션**: Lottie/MP4
-- **광고**: Google AdMob (Interstitial, Rewarded)
-- **분석**: Firebase Analytics & Crashlytics
-- **원격 설정**: Firebase Remote Config
-
-## 📱 지원 플랫폼
-
-- **Android**: 8.0+ (API Level 26+)
+### 플랫폼
+- **Flutter 3.6.0+**
+- **Android**: minSdk 21
 - **iOS**: 13.0+
-- **주요 해상도**: 90% 커버리지
 
-## 🚀 시작하기
+### 주요 의존성
+```yaml
+dependencies:
+  audioplayers: ^5.0.0          # 사운드 효과
+  google_mobile_ads: ^6.0.0     # AdMob 광고
+  shared_preferences: ^2.0.15   # 로컬 데이터 저장
+  vibration: ^2.0.0             # 진동 피드백
+  url_launcher: ^6.1.6          # 외부 링크
+  package_info_plus: ^4.2.0     # 앱 정보
+```
 
-### 필수 요구사항
+## 📁 프로젝트 구조
 
-- Flutter SDK 3.0+
-- Dart 3.0+
-- Android Studio / Xcode
-- Firebase 프로젝트 설정
+```
+lib/
+├── main.dart                    # 앱 진입점 및 메인 UI
+├── screens/
+│   ├── collection_screen.dart   # 컬렉션 화면
+│   └── settings_screen.dart     # 설정 화면
+├── services/
+│   ├── admob_service.dart       # 광고 관리
+│   ├── bald_style_service.dart  # 대머리 스타일 관리
+│   ├── counting_service.dart    # 카운팅 시스템
+│   ├── fever_time_service.dart  # 피버타임 관리
+│   ├── game_service.dart        # 게임 로직
+│   └── sound_service.dart       # 사운드 관리
+└── widgets/
+    └── hand_overlay.dart        # 손 오버레이 위젯
 
-### 설치 및 실행
+assets/
+├── images/
+│   ├── bald_styles/            # 대머리 스타일 이미지
+│   ├── hand_palm.png           # 손바닥 이미지
+│   ├── left_hand.png           # 왼손 이미지
+│   └── right_hand.png          # 오른손 이미지
+├── sounds/
+│   ├── hurt_sounds/            # 다양한 아픈 소리 (7개)
+│   ├── pain_sound.mp3          # 기본 아픈 소리
+│   └── tap_sound.mp3           # 터치 효과음
+└── icon/
+    └── icon.png                # 앱 아이콘
+```
 
-1. **저장소 클론**
+## 🚀 개발 가이드
 
-   ```bash
-   git clone https://github.com/your-username/baldlight.git
-   cd baldlight
-   ```
+### 허용된 명령어
+```bash
+flutter pub upgrade    # 의존성 업데이트
+flutter clean          # 빌드 캐시 정리
+flutter doctor         # 개발 환경 체크
+flutter test           # 테스트 실행
+flutter devices        # 연결된 디바이스 확인
+```
 
-2. **의존성 설치**
+### 아이콘 생성
+```bash
+flutter pub run flutter_launcher_icons
+```
 
-   ```bash
-   flutter pub get
-   ```
+### 광고 설정
+- **개발 모드**: 자동으로 테스트 광고 ID 사용
+- **프로덕션**: pubspec.yaml에서 실제 AdMob ID 설정
 
-3. **Firebase 및 AdMob 설정**
+## 🎨 디자인 시스템
 
-   - Firebase 콘솔에서 프로젝트 생성
-   - `google-services.json` (Android) 및 `GoogleService-Info.plist` (iOS) 추가
-   - AdMob 계정 연결 및 광고 단위 생성
-   - 현재 설정된 AdMob ID:
-     - Android 앱 ID: `ca-app-pub-5294358720517664~6429367856`
-     - Android 인터스티셜 ID: `ca-app-pub-5294358720517664/6026027260`
-     - iOS 앱 ID: `ca-app-pub-5294358720517664~9561113448`
-     - iOS 인터스티셜 ID: `ca-app-pub-5294358720517664/3403749268`
-   - 디버그 모드에서는 플랫폼별 테스트 광고 ID 자동 사용
+### UI/UX 특징
+- **Material 3** 디자인 시스템
+- **오렌지 컬러 스키마** 사용
+- **시스템 테마** 지원 (라이트/다크 모드)
+- **전체화면** 이미지 디스플레이
+- **접근성** 지원 (시맨틱 라벨)
 
-4. **앱 실행**
-   ```bash
-   flutter run
-   ```
+### 애니메이션
+- **스케일 애니메이션**: 150ms 터치 피드백
+- **전환 애니메이션**: 300ms 화면 전환
+- **진동 패턴**: 터치 시 햅틱 피드백
 
-### 환경 설정
+## 📱 앱 버전 정보
 
-Firebase 및 AdMob 설정을 위해 다음 파일들을 확인하세요:
+- **현재 버전**: 1.0.2+10
+- **패키지명**: baldlight
+- **설명**: "Bald Collector - A fun flashlight app with entertaining animations."
 
-- `android/app/google-services.json`
-- `ios/Runner/GoogleService-Info.plist`
-- AdMob 광고 단위 ID 설정
+## 🔧 개발 제약사항
 
-## 📊 성과 지표
+**중요**: 다음 명령어들은 실행하지 마세요:
+- `flutter build`
+- `flutter run`
+- `flutter pub get`
 
-### 사용자 경험
+사용자가 직접 처리하는 영역:
+- 의존성 설치
+- 코드 분석
+- 빌드
+- 디바이스 테스트
+- 앱 실행
 
-- D1 Retention ≥ 40%
-- 평균 세션당 애니메이션 재생 ≥ 3회
-- 평균 세션 길이 ≥ 45초
+## 🧪 테스트 전략
 
-### 비즈니스
+- **위젯 테스트**: UI 컴포넌트 테스트
+- **물리 디바이스 필수**: 손전등 기능은 실제 디바이스에서만 작동
+- **광고 테스트**: 디버그 모드에서 자동 테스트 광고 단위 사용
 
-- 전면 광고 클릭률 ≥ 8%
-- 보상형 광고 완료율 ≥ 60%
-- eCPM ≥ $5
+## ⚡ 성능 고려사항
 
-### 기술적 성능
+- **광고 캐싱**: 4시간 만료 주기
+- **응답 시간**: 손전등 토글 <200ms 요구사항
+- **메모리 사용량**: 목표 ≤150MB
+- **앱 크기**: 목표 ≤20MB
 
-- 앱 크기 ≤ 15 MB
-- 메모리 사용 ≤ 150 MB
-- Crash-Free Rate ≥ 99.5%
+## 🔮 향후 계획
 
-## 🗺 로드맵
+현재 구현은 더 큰 로드맵의 1단계입니다. 계획된 기능들:
+- 강화된 컬렉션 시스템
+- 추가 대머리 캐릭터 스타일
+- 고급 설정 옵션
+- Firebase Remote Config를 통한 기능 플래그
 
-### Phase 1 (완료) - MVP
-
-- [x] 기본 플래시 제어
-- [x] 대머리 애니메이션
-- [x] 전면 광고 통합
-
-### Phase 2 (진행 중)
-
-- [ ] 보상형 광고 + 스타일 시스템
-- [ ] 설정 화면
-- [ ] 다크모드 지원
-
-### Phase 3 (계획)
-
-- [ ] A/B 테스트 구현
-- [ ] 원격 업데이트 시스템
-- [ ] 다국어 지원 (영어/한국어)
-
-### 향후 계획
-
-- [ ] PRO 버전 (광고 제거)
-- [ ] AR 기능 (실시간 얼굴 인식)
-- [ ] 커뮤니티 공유 기능
-
-## 🤝 기여하기
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+서비스 레이어 아키텍처는 주요 리팩토링 없이 이러한 미래 기능들을 수용할 수 있도록 설계되었습니다.
 
 ## 📄 라이선스
 
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 `LICENSE` 파일을 참조하세요.
-
-## 📞 연락처
-
-프로젝트 관련 문의: [your-email@example.com]
-
-프로젝트 링크: [https://github.com/your-username/baldlight](https://github.com/your-username/baldlight)
-
----
-
-**"대머리손전등"** - 단순한 손전등이 아닌, 재미있는 경험을 제공하는 앱! 🎉
+이 프로젝트는 개인 사용을 위한 것이며 pub.dev에 게시되지 않습니다.
